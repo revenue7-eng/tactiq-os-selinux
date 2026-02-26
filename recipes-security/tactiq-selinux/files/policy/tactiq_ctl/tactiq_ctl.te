@@ -1,0 +1,63 @@
+policy_module(tactiq_ctl, 2.0.0)
+
+########################################
+# Type declarations
+########################################
+
+type tactiq_ctl_t;
+type tactiq_ctl_exec_t;
+
+# Transition: admin runs CLI → tactiq_ctl_t
+# Can be run from shell (not just systemd)
+application_domain(tactiq_ctl_t, tactiq_ctl_exec_t)
+role system_r types tactiq_ctl_t;
+
+########################################
+# Permissions
+########################################
+
+# --- Self ---
+allow tactiq_ctl_t self:process { signal_perms };
+allow tactiq_ctl_t self:fifo_file rw_fifo_file_perms;
+allow tactiq_ctl_t self:unix_stream_socket create_stream_socket_perms;
+allow tactiq_ctl_t self:tcp_socket create_stream_socket_perms;
+
+# --- IPC: Connect to all TactiQ daemons via Unix sockets ---
+tactiq_agent_stream_connect(tactiq_ctl_t)
+tactiq_tamper_stream_connect(tactiq_ctl_t)
+tactiq_vault_stream_connect(tactiq_ctl_t)
+tactiq_tpm_stream_connect(tactiq_ctl_t)
+
+# --- Read state from all modules ---
+tactiq_tamper_read_state(tactiq_ctl_t)
+tactiq_vault_data_read(tactiq_ctl_t)
+tactiq_tpm_read(tactiq_ctl_t)
+
+# --- Read all logs (for diagnostics) ---
+tactiq_tamper_read_log(tactiq_ctl_t)
+tactiq_verifier_read_log(tactiq_ctl_t)
+
+# --- Certificate operations (enrollment, renewal) ---
+allow tactiq_ctl_t self:capability { dac_override dac_read_search };
+
+# --- Network: fleet management, remote commands ---
+corenet_tcp_connect_generic_port(tactiq_ctl_t)
+sysnet_dns_name_resolve(tactiq_ctl_t)
+
+# --- Read certificates for enrollment ---
+miscfiles_read_generic_certs(tactiq_ctl_t)
+
+# --- Terminal I/O (interactive CLI) ---
+userdom_use_user_terminals(tactiq_ctl_t)
+
+# --- Execute helper programs ---
+corecmd_exec_bin(tactiq_ctl_t)
+corecmd_exec_shell(tactiq_ctl_t)
+
+# --- Syslog ---
+logging_send_syslog_msg(tactiq_ctl_t)
+
+# --- Read system info ---
+kernel_read_system_state(tactiq_ctl_t)
+auth_read_passwd(tactiq_ctl_t)
+miscfiles_read_localization(tactiq_ctl_t)

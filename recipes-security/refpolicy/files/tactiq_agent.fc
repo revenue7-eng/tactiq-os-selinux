@@ -1,0 +1,7 @@
+# File contexts for tactiq-agent
+/opt/tactiq/bin/tactiq-agent                   -- gen_context(system_u:object_r:tactiq_agent_exec_t,s0)
+/etc/tactiq/agent(/.*)?                    gen_context(system_u:object_r:tactiq_agent_conf_t,s0)
+/etc/tactiq/certs(/.*)?                    gen_context(system_u:object_r:tactiq_agent_cert_t,s0)
+/var/log/tactiq/agent(/.*)?                gen_context(system_u:object_r:tactiq_agent_log_t,s0)
+/var/lib/tactiq/agent(/.*)?                gen_context(system_u:object_r:tactiq_agent_var_t,s0)
+/run/tactiq-agent\.sock                 -- gen_context(system_u:object_r:tactiq_agent_var_t,s0)

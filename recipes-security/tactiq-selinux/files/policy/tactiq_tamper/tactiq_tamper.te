@@ -1,0 +1,69 @@
+policy_module(tactiq_tamper, 2.0.0)
+
+########################################
+# Type declarations
+########################################
+
+type tactiq_tamper_t;
+type tactiq_tamper_exec_t;
+type tactiq_tamper_conf_t;
+type tactiq_tamper_log_t;
+type tactiq_tamper_var_t;
+type tactiq_tamper_gpio_t;
+
+# Transition: systemd → tactiq_tamper_t
+init_daemon_domain(tactiq_tamper_t, tactiq_tamper_exec_t)
+
+########################################
+# Permissions
+########################################
+
+# --- Self ---
+allow tactiq_tamper_t self:process { signal_perms setrlimit };
+allow tactiq_tamper_t self:fifo_file rw_fifo_file_perms;
+allow tactiq_tamper_t self:unix_stream_socket create_stream_socket_perms;
+
+# --- GPIO access (tamper switches, wire loop detect) ---
+allow tactiq_tamper_t tactiq_tamper_gpio_t:chr_file { open read write ioctl getattr };
+
+# --- sysfs GPIO interface (/sys/class/gpio/) ---
+dev_read_sysfs(tactiq_tamper_t)
+dev_rw_sysfs(tactiq_tamper_t)
+
+# --- I2C bus access (IMU ICM-20948, power monitor INA260) ---
+dev_rw_generic_chr_files(tactiq_tamper_t)
+
+# --- Configuration (read-only) ---
+allow tactiq_tamper_t tactiq_tamper_conf_t:dir list_dir_perms;
+allow tactiq_tamper_t tactiq_tamper_conf_t:file read_file_perms;
+
+# --- Logs (append-only, tamper event log) ---
+allow tactiq_tamper_t tactiq_tamper_log_t:dir { search add_name };
+allow tactiq_tamper_t tactiq_tamper_log_t:file { create open append getattr };
+logging_log_filetrans(tactiq_tamper_t, tactiq_tamper_log_t, file)
+
+# --- Runtime state (sensor calibration, tamper state) ---
+allow tactiq_tamper_t tactiq_tamper_var_t:dir manage_dir_perms;
+allow tactiq_tamper_t tactiq_tamper_var_t:file manage_file_perms;
+files_var_lib_filetrans(tactiq_tamper_t, tactiq_tamper_var_t, { dir file })
+
+# --- Unix socket for IPC to tactiq-agent ---
+allow tactiq_tamper_t tactiq_tamper_var_t:sock_file { create write unlink getattr setattr };
+tactiq_agent_stream_connect(tactiq_tamper_t)
+
+# --- TPM access (extend PCR on tamper event) ---
+tactiq_tpm_access(tactiq_tamper_t)
+
+# --- Syslog (tamper alerts) ---
+logging_send_syslog_msg(tactiq_tamper_t)
+
+# --- System clock (tamper event timestamps) ---
+auth_read_passwd(tactiq_tamper_t)
+miscfiles_read_localization(tactiq_tamper_t)
+dev_read_realtime_clock(tactiq_tamper_t)
+
+# --- Kernel interfaces for sensor interrupts ---
+kernel_read_system_state(tactiq_tamper_t)
+
+# --- Real-time scheduling (low-latency tamper response) ---
+allow tactiq_tamper_t self:process { setsched };

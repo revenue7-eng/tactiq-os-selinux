@@ -1,0 +1,17 @@
+# Vault daemon binary
+/opt/tactiq/bin/tactiq-vault		--	gen_context(system_u:object_r:tactiq_vault_exec_t,s0)
+
+# Configuration
+/etc/tactiq/vault(/.*)?			gen_context(system_u:object_r:tactiq_vault_conf_t,s0)
+
+# Data vault mount point
+/data(/.*)?				gen_context(system_u:object_r:tactiq_vault_data_t,s0)
+
+# Logs
+/var/log/tactiq/vault(/.*)?		gen_context(system_u:object_r:tactiq_vault_log_t,s0)
+
+# Runtime state
+/var/lib/tactiq/vault(/.*)?		gen_context(system_u:object_r:tactiq_vault_var_t,s0)
+
+# IPC socket
+/run/tactiq-vault\.sock		-s	gen_context(system_u:object_r:tactiq_vault_var_t,s0)

@@ -1,0 +1,16 @@
+# RAUC binary (system RAUC, not our wrapper)
+/usr/bin/rauc			--	gen_context(system_u:object_r:tactiq_rauc_exec_t,s0)
+/opt/tactiq/bin/tactiq-rauc		--	gen_context(system_u:object_r:tactiq_rauc_exec_t,s0)
+
+# Configuration (system.conf, keyring certificate)
+/etc/rauc(/.*)?				gen_context(system_u:object_r:tactiq_rauc_conf_t,s0)
+/etc/tactiq/rauc(/.*)?			gen_context(system_u:object_r:tactiq_rauc_conf_t,s0)
+
+# Bundle staging area
+/var/lib/tactiq/rauc/bundles(/.*)?	gen_context(system_u:object_r:tactiq_rauc_bundle_t,s0)
+
+# Logs
+/var/log/tactiq/rauc(/.*)?		gen_context(system_u:object_r:tactiq_rauc_log_t,s0)
+
+# Runtime state (slot status, boot counter)
+/var/lib/tactiq/rauc(/.*)?		gen_context(system_u:object_r:tactiq_rauc_var_t,s0)

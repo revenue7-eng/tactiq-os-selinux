@@ -1,0 +1,62 @@
+## <summary>TactiQ TPM access interfaces</summary>
+
+########################################
+## <summary>
+##   Allow a domain to access TPM devices.
+##   Grants read/write to /dev/tpm0, /dev/tpmrm0
+##   and tpm2-tss resource manager socket.
+## </summary>
+## <param name="domain">
+##   <summary>Domain to grant TPM access.</summary>
+## </param>
+#
+interface(`tactiq_tpm_access',`
+    gen_require(`
+        type tactiq_tpm_device_t;
+        type tactiq_tpm_var_t;
+    ')
+
+    # Direct TPM device access
+    allow $1 tactiq_tpm_device_t:chr_file { open read write ioctl getattr };
+
+    # Resource manager socket (tpm2-abrmd)
+    allow $1 tactiq_tpm_var_t:sock_file { write getattr };
+    allow $1 tactiq_tpm_var_t:dir search;
+')
+
+########################################
+## <summary>
+##   Allow a domain read-only TPM access (PCR read, quote).
+##   No key operations, no write to NV.
+## </summary>
+## <param name="domain">
+##   <summary>Domain to grant read-only TPM access.</summary>
+## </param>
+#
+interface(`tactiq_tpm_read',`
+    gen_require(`
+        type tactiq_tpm_device_t;
+        type tactiq_tpm_var_t;
+    ')
+
+    allow $1 tactiq_tpm_device_t:chr_file { open read getattr };
+    allow $1 tactiq_tpm_var_t:sock_file { write getattr };
+    allow $1 tactiq_tpm_var_t:dir search;
+')
+
+########################################
+## <summary>
+##   Connect to the TPM daemon via Unix socket.
+## </summary>
+## <param name="domain">
+##   <summary>Domain to connect.</summary>
+## </param>
+#
+interface(`tactiq_tpm_stream_connect',`
+    gen_require(`
+        type tactiq_tpm_t;
+        type tactiq_tpm_var_t;
+    ')
+
+    stream_connect_pattern($1, tactiq_tpm_var_t, tactiq_tpm_var_t, tactiq_tpm_t)
+')

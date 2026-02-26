@@ -1,0 +1,76 @@
+policy_module(tactiq_vault, 2.0.0)
+
+########################################
+# Type declarations
+########################################
+
+type tactiq_vault_t;
+type tactiq_vault_exec_t;
+type tactiq_vault_conf_t;
+type tactiq_vault_log_t;
+type tactiq_vault_var_t;
+type tactiq_vault_data_t;
+
+# Transition: systemd → tactiq_vault_t
+init_daemon_domain(tactiq_vault_t, tactiq_vault_exec_t)
+
+########################################
+# Permissions
+########################################
+
+# --- Self ---
+allow tactiq_vault_t self:process { signal_perms setrlimit };
+allow tactiq_vault_t self:fifo_file rw_fifo_file_perms;
+allow tactiq_vault_t self:unix_stream_socket create_stream_socket_perms;
+
+# --- Block device access for LUKS operations ---
+allow tactiq_vault_t self:capability { sys_admin mknod };
+dev_read_raw_memory(tactiq_vault_t)
+
+# --- Device mapper (dm-crypt for LUKS) ---
+allow tactiq_vault_t self:capability { sys_rawio };
+storage_raw_read_fixed_disk(tactiq_vault_t)
+storage_raw_write_fixed_disk(tactiq_vault_t)
+
+# --- /dev/mapper/* for LUKS volumes ---
+dev_rw_lvm_control(tactiq_vault_t)
+
+# --- Cryptsetup execution ---
+corecmd_exec_bin(tactiq_vault_t)
+
+# --- TPM access (unseal DEK from TPM) ---
+tactiq_tpm_access(tactiq_vault_t)
+
+# --- Configuration (read-only, vault policy) ---
+allow tactiq_vault_t tactiq_vault_conf_t:dir list_dir_perms;
+allow tactiq_vault_t tactiq_vault_conf_t:file read_file_perms;
+
+# --- Data vault mount point ---
+allow tactiq_vault_t tactiq_vault_data_t:dir manage_dir_perms;
+allow tactiq_vault_t tactiq_vault_data_t:file manage_file_perms;
+allow tactiq_vault_t tactiq_vault_data_t:lnk_file manage_lnk_file_perms;
+
+# --- Logs (append-only) ---
+allow tactiq_vault_t tactiq_vault_log_t:dir { search add_name };
+allow tactiq_vault_t tactiq_vault_log_t:file { create open append getattr };
+logging_log_filetrans(tactiq_vault_t, tactiq_vault_log_t, file)
+
+# --- Runtime state (vault status, mount info) ---
+allow tactiq_vault_t tactiq_vault_var_t:dir manage_dir_perms;
+allow tactiq_vault_t tactiq_vault_var_t:file manage_file_perms;
+files_var_lib_filetrans(tactiq_vault_t, tactiq_vault_var_t, { dir file })
+
+# --- IPC socket ---
+allow tactiq_vault_t tactiq_vault_var_t:sock_file { create write unlink getattr setattr };
+
+# --- Mount/unmount LUKS volumes ---
+allow tactiq_vault_t self:capability { sys_admin };
+
+# --- Syslog ---
+logging_send_syslog_msg(tactiq_vault_t)
+
+# --- System state ---
+kernel_read_system_state(tactiq_vault_t)
+files_read_etc_files(tactiq_vault_t)
+miscfiles_read_localization(tactiq_vault_t)
+dev_read_urand(tactiq_vault_t)

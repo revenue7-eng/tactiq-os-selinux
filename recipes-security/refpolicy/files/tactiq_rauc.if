@@ -1,0 +1,35 @@
+## <summary>TactiQ RAUC OTA update interfaces</summary>
+
+########################################
+## <summary>
+##   Read RAUC slot status (which partition is active).
+## </summary>
+## <param name="domain">
+##   <summary>Domain to grant read access.</summary>
+## </param>
+#
+interface(`tactiq_rauc_read_status',`
+    gen_require(`
+        type tactiq_rauc_var_t;
+    ')
+
+    allow $1 tactiq_rauc_var_t:dir list_dir_perms;
+    allow $1 tactiq_rauc_var_t:file read_file_perms;
+')
+
+########################################
+## <summary>
+##   Write OTA bundles to the bundle staging area.
+## </summary>
+## <param name="domain">
+##   <summary>Domain to grant write access.</summary>
+## </param>
+#
+interface(`tactiq_rauc_write_bundle',`
+    gen_require(`
+        type tactiq_rauc_bundle_t;
+    ')
+
+    allow $1 tactiq_rauc_bundle_t:dir { search add_name write };
+    allow $1 tactiq_rauc_bundle_t:file { create write open getattr };
+')

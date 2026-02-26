@@ -1,0 +1,61 @@
+policy_module(tactiq_tpm, 2.0.0)
+
+########################################
+# Type declarations
+########################################
+
+type tactiq_tpm_t;
+type tactiq_tpm_exec_t;
+type tactiq_tpm_conf_t;
+type tactiq_tpm_log_t;
+type tactiq_tpm_var_t;
+
+# TPM device types
+type tactiq_tpm_device_t;
+
+# Transition: systemd starts tpm helper → runs as tactiq_tpm_t
+init_daemon_domain(tactiq_tpm_t, tactiq_tpm_exec_t)
+
+########################################
+# Permissions
+########################################
+
+# --- Self ---
+allow tactiq_tpm_t self:process { signal_perms setrlimit };
+allow tactiq_tpm_t self:fifo_file rw_fifo_file_perms;
+allow tactiq_tpm_t self:unix_stream_socket create_stream_socket_perms;
+
+# --- TPM device access (/dev/tpm0, /dev/tpmrm0) ---
+allow tactiq_tpm_t tactiq_tpm_device_t:chr_file { open read write ioctl getattr };
+
+# --- TPM kernel interface (/sys/class/tpm/) ---
+dev_read_sysfs(tactiq_tpm_t)
+kernel_read_system_state(tactiq_tpm_t)
+
+# --- Configuration (read-only) ---
+allow tactiq_tpm_t tactiq_tpm_conf_t:dir list_dir_perms;
+allow tactiq_tpm_t tactiq_tpm_conf_t:file read_file_perms;
+
+# --- Logs (append-only) ---
+allow tactiq_tpm_t tactiq_tpm_log_t:dir { search add_name };
+allow tactiq_tpm_t tactiq_tpm_log_t:file { create open append getattr };
+logging_log_filetrans(tactiq_tpm_t, tactiq_tpm_log_t, file)
+
+# --- Runtime state (PCR cache, key handles) ---
+allow tactiq_tpm_t tactiq_tpm_var_t:dir manage_dir_perms;
+allow tactiq_tpm_t tactiq_tpm_var_t:file manage_file_perms;
+files_var_lib_filetrans(tactiq_tpm_t, tactiq_tpm_var_t, { dir file })
+
+# --- tpm2-tss resource manager socket ---
+allow tactiq_tpm_t tactiq_tpm_var_t:sock_file { create write unlink getattr setattr };
+
+# --- Syslog ---
+logging_send_syslog_msg(tactiq_tpm_t)
+
+# --- Read entropy for key generation ---
+dev_read_urand(tactiq_tpm_t)
+
+# --- Time for TPM timestamps ---
+files_read_etc_files(tactiq_tpm_t)
+miscfiles_read_localization(tactiq_tpm_t)
+dev_read_sysfs(tactiq_tpm_t)
