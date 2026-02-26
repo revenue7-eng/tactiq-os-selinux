@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.0.2)
+policy_module(tactiq_agent, 2.0.4)
 
 ########################################
 # Type declarations
@@ -81,3 +81,17 @@ allow tactiq_agent_t user_tmpfs_t:file { create read write open getattr setattr 
 
 # --- Deny everything else ---
 # Implicit: all other access is denied by SELinux default-deny
+
+
+# --- Unlabeled filesystem on /data (ext4 without xattr labels) ---
+require {
+    type unlabeled_t;
+}
+allow tactiq_agent_t unlabeled_t:dir { getattr search read open write add_name remove_name };
+allow tactiq_agent_t unlabeled_t:file { create read write open getattr setattr lock unlink };
+
+# --- Allow agent to connect to attestation server (port 8443) ---
+require {
+    type http_port_t;
+}
+allow tactiq_agent_t http_port_t:tcp_socket name_connect;

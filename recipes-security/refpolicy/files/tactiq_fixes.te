@@ -1,4 +1,4 @@
-policy_module(tactiq_fixes, 2.0.6)
+policy_module(tactiq_fixes, 2.0.8)
 
 ########################################
 # Fix: busybox klogd/syslogd need read+map on bin_t
@@ -97,3 +97,10 @@ gen_require(`
 allow unconfined_t tactiq_vault_data_t:dir { getattr search read write open add_name remove_name create };
 allow unconfined_t tactiq_vault_data_t:file { getattr read write open create unlink };
 allow unconfined_mount_t tactiq_vault_data_t:dir { search mounton };
+
+# --- /data partition mount (via /run/tactiq-data) ---
+allow mount_t initrc_runtime_t:dir mounton;
+
+
+# --- Allow mount on /data (tactiq_vault_data_t) ---
+allow mount_t tactiq_vault_data_t:dir mounton;
