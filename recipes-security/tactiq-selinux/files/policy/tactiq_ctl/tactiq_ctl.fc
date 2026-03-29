@@ -1,2 +1,0 @@
-# CTL binary
-/opt/tactiq/bin/tactiq-ctl		--	gen_context(system_u:object_r:tactiq_ctl_exec_t,s0)
