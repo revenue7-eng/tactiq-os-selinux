@@ -1,0 +1,11 @@
+# CODEOWNERS for meta-tactiq-selinux
+# https://docs.github.com/articles/about-code-owners
+
+# Default owner.
+*                                              @revenue7-eng
+
+# Policy surfaces. Every SELinux allow/neverallow rule shipped here ends
+# up enforced on production edge devices — any change needs owner review.
+/recipes-security/refpolicy/files/             @revenue7-eng
+/.github/workflows/                            @revenue7-eng
+/SECURITY.md                                   @revenue7-eng

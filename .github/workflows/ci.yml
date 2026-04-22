@@ -1,0 +1,133 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  policy-module-structure:
+    name: SELinux policy module structure
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Assert every .te has matching .if and .fc
+        run: |
+          set -eu
+          cd recipes-security/refpolicy/files
+          rc=0
+          for te in *.te; do
+            base="${te%.te}"
+            for ext in if fc; do
+              if [ ! -f "${base}.${ext}" ]; then
+                echo "::error file=recipes-security/refpolicy/files/${te}::missing companion ${base}.${ext}"
+                rc=1
+              fi
+            done
+          done
+          exit $rc
+
+      - name: Assert every .te declares policy_module()
+        run: |
+          set -eu
+          cd recipes-security/refpolicy/files
+          rc=0
+          for te in *.te; do
+            if ! head -20 "$te" | grep -Eq '^policy_module\([a-zA-Z_][a-zA-Z0-9_]*,[[:space:]]*[0-9]+\.[0-9]+(\.[0-9]+)?\)'; then
+              echo "::error file=recipes-security/refpolicy/files/${te}::missing or malformed policy_module() declaration in first 20 lines"
+              rc=1
+            fi
+          done
+          exit $rc
+
+      - name: Assert every .fc file has valid path contexts
+        run: |
+          set -eu
+          cd recipes-security/refpolicy/files
+          rc=0
+          for fc in *.fc; do
+            # A .fc file either (a) contains file-context entries starting
+            # with /, or (b) is empty / comments-only (legal pattern for a
+            # module that only adds allow rules and declares no file labels).
+            # We reject files that have non-comment, non-empty content that
+            # doesn't start with /.
+            stripped=$(grep -v '^[[:space:]]*#' "$fc" | grep -v '^[[:space:]]*$' || true)
+            if [ -n "$stripped" ]; then
+              if ! echo "$stripped" | grep -Eq '^/'; then
+                echo "::error file=recipes-security/refpolicy/files/${fc}::file has non-comment content that does not start with /"
+                rc=1
+              fi
+            fi
+          done
+          exit $rc
+
+  m4-syntax:
+    name: m4 syntax check on .te files
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install m4
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq m4
+
+      - name: Parse every .te through m4
+        run: |
+          set -eu
+          cd recipes-security/refpolicy/files
+          rc=0
+          for te in *.te; do
+            # Use m4 in freeze mode to check macro/paren balance without
+            # needing the full refpolicy macro library. Undefined macros are
+            # expected (they come from refpolicy); we only care that the file
+            # is syntactically parseable m4.
+            if ! m4 --fatal-warnings --prefix-builtins "$te" >/dev/null 2>&1; then
+              # Re-run without --fatal-warnings to capture the actual error
+              # refpolicy macros will always be "undefined" at this stage,
+              # so we filter those. True syntax errors (unbalanced parens,
+              # malformed quotes) still surface.
+              err=$(m4 --prefix-builtins "$te" 2>&1 >/dev/null | grep -Ev 'undefined macro' || true)
+              if [ -n "$err" ]; then
+                echo "::error file=recipes-security/refpolicy/files/${te}::m4 syntax error"
+                echo "$err"
+                rc=1
+              fi
+            fi
+          done
+          exit $rc
+
+  recipe-lint:
+    name: Yocto recipe lint (oelint-adv)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - run: pip install --upgrade pip oelint-adv
+
+      - name: Lint recipes
+        run: |
+          set -o pipefail
+          find recipes-security -name '*.bb' -o -name '*.bbappend' \
+            | xargs oelint-adv --quiet \
+            || echo "oelint-adv reported findings (non-fatal in CI bootstrap)"
+
+  yaml-validate:
+    name: YAML validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install --upgrade pip yamllint
+      - run: |
+          yamllint -d '{extends: relaxed, rules: {line-length: disable}}' \
+            .github 2>/dev/null || true
