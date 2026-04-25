@@ -131,3 +131,41 @@ jobs:
       - run: |
           yamllint -d '{extends: relaxed, rules: {line-length: disable}}' \
             .github 2>/dev/null || true
+
+  manifest-check:
+    name: POLICY_MANIFEST.md is in sync with .te files
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Regenerate manifest and diff against committed copy
+        run: |
+          set -eu
+          chmod +x scripts/gen-policy-manifest.sh
+          scripts/gen-policy-manifest.sh --check
+
+  release-reproducibility:
+    name: Release archive is byte-deterministic
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0          # build-release-archive needs commit timestamp
+      - name: Build archive twice and compare hashes
+        # The archive is what cosign signs at release time. If two back-to-back
+        # builds of the same commit produce different bytes, the signature on
+        # one tag would not verify against a rebuild from source -- which is
+        # the entire point of reproducibility for a signed artifact.
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build-release-archive.sh
+          OUT=dist-a scripts/build-release-archive.sh
+          OUT=dist-b scripts/build-release-archive.sh
+          # Compare the canonical SHA256SUMS files; if those agree, the
+          # archives themselves agree (SHA256SUMS contains the archive hash).
+          if ! diff -u dist-a/SHA256SUMS dist-b/SHA256SUMS; then
+            echo "::error::release archive is non-deterministic across two consecutive builds"
+            exit 1
+          fi
+          echo "Archive hash stable across two builds: $(cat dist-a/SHA256SUMS)"
