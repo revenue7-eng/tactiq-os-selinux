@@ -1,0 +1,64 @@
+name: attest
+
+# SLSA build-provenance attestation over the deterministic source archive
+# of this layer. Bound to the workflow path at the triggering ref via
+# Sigstore OIDC. Verifiable with `gh attestation verify`.
+#
+# This mirrors the parent `meta-tactiq` (revenue7-eng/tactiq-os) attest.yml
+# so a consumer who already verifies the parent can apply the same procedure
+# here. The only differences are the archive name prefix and the source
+# tree set (this layer ships only `conf/` and `recipes-security/`).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write      # required by actions/attest-build-provenance (Sigstore OIDC)
+  attestations: write  # required to upload the attestation
+
+jobs:
+  attest-policy-source:
+    name: Attest SELinux policy layer source tarball
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Build deterministic source archive
+        id: archive
+        run: |
+          set -eu
+          # Deterministic tar: sorted, no mtime drift, no owner/group leakage.
+          # The hash recorded by the attestation binds to this exact archive.
+          # Same flags as release-sign.yml so the two workflows produce
+          # byte-identical archives for the same commit.
+          COMMIT=$(git rev-parse HEAD)
+          mkdir -p dist
+          tar --sort=name \
+              --owner=0 --group=0 --numeric-owner \
+              --mtime="@$(git log -1 --format=%ct)" \
+              --exclude-vcs \
+              -czf dist/tactiq-os-selinux-${COMMIT}.tar.gz \
+              conf recipes-security
+          sha256sum dist/tactiq-os-selinux-${COMMIT}.tar.gz \
+              | tee dist/tactiq-os-selinux-${COMMIT}.sha256
+          echo "path=dist/tactiq-os-selinux-${COMMIT}.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Generate SLSA build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.archive.outputs.path }}
+
+      - name: Upload source archive + checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: tactiq-os-selinux-source
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+          retention-days: 90

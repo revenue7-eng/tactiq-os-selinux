@@ -1,0 +1,141 @@
+name: release-sign
+
+# Keyless cosign signing of release `SHA256SUMS` under the GitHub Actions
+# workflow identity. Produces three release assets:
+#
+#   tactiq-os-selinux-<commit>.tar.gz - deterministic source archive
+#   SHA256SUMS                        - sha256 of the source archive
+#   SHA256SUMS.workflow.pem           - Fulcio-issued cert whose SAN is this
+#                                       workflow path at the triggering ref
+#   SHA256SUMS.workflow.sig           - cosign signature over SHA256SUMS
+#
+# This mirrors the signing pattern used by the parent `meta-tactiq` repository
+# (revenue7-eng/tactiq-os) so a consumer who has already learned the parent's
+# verification procedure can apply the same `cosign verify-blob` invocation
+# here, only swapping the repository name in the certificate identity.
+#
+# Unlike the parent, this layer ships only source artifacts: no kernel,
+# rootfs, or DTB. The signed object is therefore the source archive itself
+# (via SHA256SUMS), produced deterministically from the tagged commit by
+# the same archiver logic as `attest.yml`.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write    # required to upload the release assets
+  id-token: write    # required for Sigstore keyless OIDC
+
+jobs:
+  sign-release-source:
+    name: Sign source archive SHA256SUMS with workflow OIDC identity
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Signing release: ${TAG}"
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Build deterministic source archive
+        id: archive
+        run: |
+          set -euo pipefail
+          COMMIT=$(git rev-parse HEAD)
+          mkdir -p dist
+          # Deterministic tar: sorted entries, fixed owner/group, mtime
+          # pinned to the commit timestamp. Same flags as attest.yml so the
+          # archive both workflows produce is byte-identical.
+          tar --sort=name \
+              --owner=0 --group=0 --numeric-owner \
+              --mtime="@$(git log -1 --format=%ct)" \
+              --exclude-vcs \
+              -czf dist/tactiq-os-selinux-${COMMIT}.tar.gz \
+              conf recipes-security
+          ARCHIVE="dist/tactiq-os-selinux-${COMMIT}.tar.gz"
+          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
+          echo "commit=${COMMIT}"   >> "$GITHUB_OUTPUT"
+          echo "Archive size: $(wc -c < "${ARCHIVE}") bytes"
+          echo "Archive sha256: $(sha256sum "${ARCHIVE}")"
+
+      - name: Generate SHA256SUMS
+        run: |
+          set -euo pipefail
+          cd dist
+          # Single-line SHA256SUMS over the source archive. Same format
+          # as `sha256sum -c` expects, so consumers can verify with the
+          # standard one-liner.
+          sha256sum tactiq-os-selinux-${{ steps.archive.outputs.commit }}.tar.gz \
+              > SHA256SUMS
+          echo "--- SHA256SUMS ---"
+          cat SHA256SUMS
+
+      - name: Sign SHA256SUMS (keyless, workflow identity)
+        env:
+          COSIGN_YES: 'true'
+        run: |
+          set -euo pipefail
+          cd dist
+          cosign sign-blob \
+              --output-certificate SHA256SUMS.workflow.pem \
+              --output-signature   SHA256SUMS.workflow.sig \
+              SHA256SUMS
+          echo "--- signature files ---"
+          ls -la SHA256SUMS.workflow.pem SHA256SUMS.workflow.sig
+          echo "--- certificate SAN ---"
+          openssl x509 -in SHA256SUMS.workflow.pem -noout -ext subjectAltName || true
+
+      - name: Upload assets to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd dist
+          # Create the release if it does not already exist (tag-push may
+          # arrive before a manual release was created). --notes-file is
+          # not used here; release notes are managed separately.
+          gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1 \
+              || gh release create "${TAG}" \
+                     --repo "${GITHUB_REPOSITORY}" \
+                     --title "${TAG}" \
+                     --notes "Signed source release. See VERIFY.md for verification procedure."
+          gh release upload "${TAG}" \
+              tactiq-os-selinux-${{ steps.archive.outputs.commit }}.tar.gz \
+              SHA256SUMS \
+              SHA256SUMS.workflow.pem \
+              SHA256SUMS.workflow.sig \
+              --repo "${GITHUB_REPOSITORY}" \
+              --clobber
+
+      - name: Verify signature as published
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd dist
+          EXPECTED_IDENTITY="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release-sign.yml@refs/tags/${TAG}"
+          echo "Expected identity: ${EXPECTED_IDENTITY}"
+          cosign verify-blob \
+              --certificate       SHA256SUMS.workflow.pem \
+              --signature         SHA256SUMS.workflow.sig \
+              --certificate-identity       "${EXPECTED_IDENTITY}" \
+              --certificate-oidc-issuer    https://token.actions.githubusercontent.com \
+              SHA256SUMS
+          echo "Workflow-identity signature verified."
+          # Re-verify the archive against SHA256SUMS, end-to-end check.
+          sha256sum -c SHA256SUMS
+          echo "Archive integrity verified against signed SHA256SUMS."
