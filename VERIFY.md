@@ -52,7 +52,7 @@ identity from `v2.1.0` onward.
 
 ```sh
 cosign version          # expect >= 2.2
-gh --version            # expect >= 2.40
+gh --version            # expect >= 2.49 (for `gh attestation verify`)
 openssl version         # any recent
 sha256sum --version     # GNU coreutils
 ```
@@ -201,9 +201,9 @@ Web UI: <https://search.sigstore.dev>.
 
 Known Rekor indices:
 
-| Release | Index   | Identity |
-|---------|---------|----------|
-| _none yet — populated after first signed release_ |  |  |
+| Release | Index        | UUID                                                               | Identity |
+|---------|--------------|--------------------------------------------------------------------|----------|
+| v2.1.0  | `1437005122` | `108e9186e8c5677a3fb53a2c0868071d4200019e1579ed0917eb4aebe5efc40f8a6c7d4db27f2820` | workflow |
 
 ---
 
