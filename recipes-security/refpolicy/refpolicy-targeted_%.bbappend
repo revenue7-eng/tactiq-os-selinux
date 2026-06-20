@@ -31,10 +31,10 @@ SRC_URI += " \
 
 do_compile:prepend() {
     for mod in ${TACTIQ_MODULES}; do
-        if [ -f ${WORKDIR}/${mod}.te ]; then
-            cp ${WORKDIR}/${mod}.te ${S}/policy/modules/services/
-            cp ${WORKDIR}/${mod}.fc ${S}/policy/modules/services/
-            cp ${WORKDIR}/${mod}.if ${S}/policy/modules/services/
+        if [ -f ${UNPACKDIR}/${mod}.te ]; then
+            cp ${UNPACKDIR}/${mod}.te ${S}/policy/modules/services/
+            cp ${UNPACKDIR}/${mod}.fc ${S}/policy/modules/services/
+            cp ${UNPACKDIR}/${mod}.if ${S}/policy/modules/services/
             echo "${mod} = module" >> ${S}/policy/modules.conf
             bbnote "Injected TactiQ SELinux module: ${mod}"
         fi
