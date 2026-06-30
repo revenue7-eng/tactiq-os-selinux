@@ -1,0 +1,31 @@
+## <summary>agentgateway MCP mediator policy interfaces</summary>
+
+########################################
+## <summary>
+##   Allow a domain to connect to agentgateway over TCP loopback
+##   (MCP listener, port 49190).
+## </summary>
+## <param name="domain">
+##   <summary>Domain to grant access.</summary>
+## </param>
+interface(`agentgateway_tcp_connect',`
+    gen_require(`
+        type agentgateway_port_t;
+    ')
+    allow $1 agentgateway_port_t:tcp_socket name_connect;
+')
+
+########################################
+## <summary>
+##   Allow a domain to read agentgateway logs.
+## </summary>
+## <param name="domain">
+##   <summary>Domain to grant access.</summary>
+## </param>
+interface(`agentgateway_read_log',`
+    gen_require(`
+        type agentgateway_log_t;
+    ')
+    allow $1 agentgateway_log_t:dir list_dir_perms;
+    allow $1 agentgateway_log_t:file read_file_perms;
+')

@@ -1,6 +1,6 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-TACTIQ_MODULES = "tactiq_fixes tactiq_agent tactiq_tpm tactiq_verifier tactiq_tamper tactiq_vault tactiq_ctl tactiq_rauc"
+TACTIQ_MODULES = "tactiq_fixes tactiq_agent tactiq_tpm tactiq_verifier tactiq_tamper tactiq_vault tactiq_ctl tactiq_rauc agentgateway"
 
 SRC_URI += " \
     file://tactiq_fixes.te \
@@ -28,6 +28,9 @@ SRC_URI += " \
     file://tactiq_rauc.fc \
     file://tactiq_rauc.if \
     file://0001-squashfs-genfscon-tactiq.patch \
+    file://agentgateway.te \
+    file://agentgateway.fc \
+    file://agentgateway.if \
 "
 
 do_compile:prepend() {

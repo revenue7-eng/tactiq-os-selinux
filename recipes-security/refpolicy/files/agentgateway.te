@@ -1,0 +1,64 @@
+policy_module(agentgateway, 1.0.0)
+
+########################################
+# Type declarations
+########################################
+type agentgateway_t;
+type agentgateway_exec_t;
+type agentgateway_conf_t;
+type agentgateway_log_t;
+type agentgateway_port_t;
+
+# Transition: systemd starts binary -> runs as agentgateway_t
+init_daemon_domain(agentgateway_t, agentgateway_exec_t)
+
+# Custom port type for the loopback MCP listener (TCP 49190).
+# Binding the number to the type is done via portcon in this module
+# so the domain is self-contained (no runtime semanage step).
+corenet_port(agentgateway_port_t)
+
+########################################
+# Permissions
+########################################
+
+# --- Self ---
+allow agentgateway_t self:process { signal_perms setrlimit getsched };
+allow agentgateway_t self:fifo_file rw_fifo_file_perms;
+allow agentgateway_t self:unix_stream_socket create_stream_socket_perms;
+# tcp_socket: create+bind+listen+accept (NO connect). Inbound loopback only.
+allow agentgateway_t self:tcp_socket create_stream_socket_perms;
+
+# --- Network: LISTEN on 49190 only (inverted vs agent: no outbound) ---
+# Server side: bind to the custom port type, listen, accept.
+allow agentgateway_t agentgateway_port_t:tcp_socket name_bind;
+allow agentgateway_t self:tcp_socket { listen accept };
+corenet_tcp_bind_generic_node(agentgateway_t)
+#
+# Deliberately ABSENT (egress denied by default-deny):
+#   corenet_tcp_connect_generic_port  -- no outbound connect
+#   sysnet_dns_name_resolve           -- no DNS
+#   http_port_t name_connect          -- no http backends
+# v1 perimeter is empty (backends: []). stdio backends, when added,
+# will require domain_auto_transition on the MCP subprocess exec --
+# added at that time, not pre-provisioned here.
+
+# --- Configuration (read-only) ---
+allow agentgateway_t agentgateway_conf_t:dir list_dir_perms;
+allow agentgateway_t agentgateway_conf_t:file read_file_perms;
+
+# --- Logs (append-only) ---
+allow agentgateway_t agentgateway_log_t:dir { search add_name };
+allow agentgateway_t agentgateway_log_t:file { create open append getattr };
+logging_log_filetrans(agentgateway_t, agentgateway_log_t, file)
+
+# --- Syslog ---
+logging_send_syslog_msg(agentgateway_t)
+
+# --- Minimal system reads ---
+files_read_etc_files(agentgateway_t)
+miscfiles_read_localization(agentgateway_t)
+
+# --- Deny everything else ---
+# Implicit: all other access is denied by SELinux default-deny.
+# No TPM (.service: PrivateDevices), no certs (plaintext loopback),
+# no vault/data dirs, no runtime state dir in v1 (stateless empty perimeter).
