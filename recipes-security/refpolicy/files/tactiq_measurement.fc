@@ -1,0 +1,8 @@
+# Probe runner binary
+/opt/tactiq/bin/tactiq-edge-probe          --      gen_context(system_u:object_r:tactiq_measurement_exec_t,s0)
+/opt/tactiq/bin/tactiq-edge-v4l2-probe     --      gen_context(system_u:object_r:tactiq_measurement_exec_t,s0)
+
+# Measurement result tree — OWN label, deliberately separate from the vault
+# tree (/data/tactiq/vault -> tactiq_vault_data_t). This is why B1 stops
+# fighting the vault: results go here, not into the vault label.
+/data/tactiq/measurement(/.*)?             gen_context(system_u:object_r:tactiq_measurement_data_t,s0)

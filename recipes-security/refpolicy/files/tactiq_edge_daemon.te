@@ -1,0 +1,69 @@
+policy_module(tactiq_edge_daemon, 1.0.0)
+
+########################################
+# Type declarations
+########################################
+type tactiq_edge_daemon_t;
+type tactiq_edge_daemon_exec_t;
+# Model + fixtures the daemon reads (read-only).
+type tactiq_edge_model_t;
+# The AF_UNIX listening socket node under /run/tactiq.
+type tactiq_edge_runtime_t;
+
+# Transition: systemd starts the binary -> runs as tactiq_edge_daemon_t
+init_daemon_domain(tactiq_edge_daemon_t, tactiq_edge_daemon_exec_t)
+
+
+# Runtime dir/socket node lives under /run (a tmpfs pid dir type).
+files_runtime_file(tactiq_edge_runtime_t)
+
+########################################
+# Permissions
+########################################
+
+# --- Self ---
+allow tactiq_edge_daemon_t self:process { signal_perms setrlimit getsched };
+allow tactiq_edge_daemon_t self:fifo_file rw_fifo_file_perms;
+# AF_UNIX server socket: create + bind + listen + accept. NO connect.
+# This is the inbound-only inference socket. Inverted vs a client domain:
+# the daemon never initiates a connection.
+allow tactiq_edge_daemon_t self:unix_stream_socket { create_stream_socket_perms listen accept };
+
+# --- Listening socket node in /run/tactiq (bind + manage the node) ---
+allow tactiq_edge_daemon_t tactiq_edge_runtime_t:dir { search add_name remove_name write };
+allow tactiq_edge_daemon_t tactiq_edge_runtime_t:sock_file { create setattr unlink };
+# The socket node is created with the runtime type via filetrans.
+files_runtime_filetrans(tactiq_edge_daemon_t, tactiq_edge_runtime_t, sock_file)
+#
+# Deliberately ABSENT (egress denied by default-deny):
+#   corenet_tcp_connect_*   -- no TCP at all (AF_UNIX only, per wire proto v0)
+#   corenet_*_bind          -- no network sockets; the perimeter has no listener
+#   sysnet_dns_name_resolve -- no DNS
+# The auth boundary IS this domain confinement (wire proto v0, section 1).
+
+# --- Model + fixtures (read-only) ---
+allow tactiq_edge_daemon_t tactiq_edge_model_t:dir list_dir_perms;
+allow tactiq_edge_daemon_t tactiq_edge_model_t:file mmap_read_file_perms;
+
+# --- Syslog (operator log: class verdicts) ---
+logging_send_syslog_msg(tactiq_edge_daemon_t)
+
+# --- Minimal system reads ---
+files_read_etc_files(tactiq_edge_daemon_t)
+miscfiles_read_localization(tactiq_edge_daemon_t)
+
+# --- Deny everything else ---
+# Implicit: all other access denied by SELinux default-deny.
+# No data/vault dirs, no devices, no outbound anything. v1 empty perimeter.
+
+########################################
+# DEV-ONLY BLOCK — REMOVE BEFORE COMMIT
+# 1) permissive: full denial list in one boot instead of die-on-first-denial
+# 2) auditd -> vault-labeled /data/tactiq/audit (log_file redirect, dev image only)
+require { type auditd_t; type auditctl_t; type tactiq_vault_data_t; }
+allow auditd_t tactiq_vault_data_t:dir { search add_name write getattr };
+allow auditd_t tactiq_vault_data_t:file { create open append getattr setattr };
+allow auditctl_t tactiq_vault_data_t:dir { search getattr };
+allow auditctl_t tactiq_vault_data_t:file { getattr write append };
+# END DEV-ONLY BLOCK
+########################################

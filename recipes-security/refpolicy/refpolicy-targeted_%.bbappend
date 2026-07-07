@@ -1,6 +1,6 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-TACTIQ_MODULES = "tactiq_fixes tactiq_agent tactiq_tpm tactiq_verifier tactiq_tamper tactiq_vault tactiq_ctl tactiq_rauc agentgateway"
+TACTIQ_MODULES = "tactiq_fixes tactiq_agent tactiq_tpm tactiq_verifier tactiq_tamper tactiq_vault tactiq_ctl tactiq_rauc agentgateway tactiq_edge_daemon"
 
 SRC_URI += " \
     file://tactiq_fixes.te \
@@ -31,6 +31,9 @@ SRC_URI += " \
     file://agentgateway.te \
     file://agentgateway.fc \
     file://agentgateway.if \
+    file://tactiq_edge_daemon.te \
+    file://tactiq_edge_daemon.fc \
+    file://tactiq_edge_daemon.if \
 "
 
 do_compile:prepend() {
@@ -44,3 +47,14 @@ do_compile:prepend() {
         fi
     done
 }
+
+# --- Dev-policy overlay (measurement channel) ---
+# Injected only under the tactiq-dev-policy override (set in dev local.conf).
+# Prod builds omit the override -> these modules never enter the policy.
+TACTIQ_MODULES:append:tactiq-dev-policy = " tactiq_measurement"
+
+SRC_URI:append:tactiq-dev-policy = " \
+    file://tactiq_measurement.te \
+    file://tactiq_measurement.fc \
+    file://tactiq_measurement.if \
+"

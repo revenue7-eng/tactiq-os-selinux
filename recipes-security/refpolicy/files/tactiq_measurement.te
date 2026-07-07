@@ -1,0 +1,54 @@
+policy_module(tactiq_measurement, 1.0.0)
+
+########################################
+# DEV-ONLY measurement module.
+# Injected only under the tactiq-dev-policy override (dev image).
+# Prod builds omit the override entirely -> none of this enters the policy.
+# Purpose: give the throwaway probe runner a place to write latency/accuracy
+# results OUTSIDE the vault label, so the headless "write to /data -> read from
+# card" channel works without granting the product daemon any disk write.
+########################################
+
+########################################
+# Type declarations
+########################################
+type tactiq_measurement_t;
+type tactiq_measurement_exec_t;
+
+# Result data node — its OWN label, NOT tactiq_vault_data_t.
+type tactiq_measurement_data_t;
+files_type(tactiq_measurement_data_t)
+
+# systemd starts the probe runner -> runs as tactiq_measurement_t
+init_daemon_domain(tactiq_measurement_t, tactiq_measurement_exec_t)
+
+########################################
+# Permissions
+########################################
+
+# --- Self ---
+allow tactiq_measurement_t self:process { signal_perms setrlimit getsched };
+allow tactiq_measurement_t self:fifo_file rw_fifo_file_perms;
+
+# --- Read the model + fixtures (same read-only inputs as the daemon) ---
+require { type tactiq_edge_model_t; }
+allow tactiq_measurement_t tactiq_edge_model_t:dir list_dir_perms;
+allow tactiq_measurement_t tactiq_edge_model_t:file mmap_read_file_perms;
+
+# --- Write measurement results to the measurement data tree ---
+allow tactiq_measurement_t tactiq_measurement_data_t:dir { search add_name remove_name write open getattr };
+allow tactiq_measurement_t tactiq_measurement_data_t:file { create open append write getattr setattr };
+files_filetrans(tactiq_measurement_t, tactiq_measurement_data_t, { dir file })
+
+# --- Operator log (probe prints verdicts/latency) ---
+logging_send_syslog_msg(tactiq_measurement_t)
+
+# --- Minimal system reads ---
+files_read_etc_files(tactiq_measurement_t)
+miscfiles_read_localization(tactiq_measurement_t)
+
+# --- Connect to the edge daemon socket (probe drives inference over IPC) ---
+require { type tactiq_edge_runtime_t; type tactiq_edge_daemon_t; }
+allow tactiq_measurement_t tactiq_edge_runtime_t:dir search_dir_perms;
+allow tactiq_measurement_t tactiq_edge_runtime_t:sock_file { read write getattr };
+allow tactiq_measurement_t tactiq_edge_daemon_t:unix_stream_socket connectto;

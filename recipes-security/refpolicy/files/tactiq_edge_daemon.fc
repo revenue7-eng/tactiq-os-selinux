@@ -1,0 +1,10 @@
+/usr/bin/tactiq-edge-daemon      --      gen_context(system_u:object_r:tactiq_edge_daemon_exec_t,s0)
+
+# Model + fixtures. Each scaffold ships its own copy under /usr/share/<name>/;
+# label the model/classes read-only for the daemon. Product image will ship
+# the model under a single canonical path -- update this line then.
+/usr/share/edge-loop(/.*)?       gen_context(system_u:object_r:tactiq_edge_model_t,s0)
+/usr/share/edge-probe(/.*)?      gen_context(system_u:object_r:tactiq_edge_model_t,s0)
+
+# Runtime socket directory.
+/run/tactiq(/.*)?                gen_context(system_u:object_r:tactiq_edge_runtime_t,s0)
