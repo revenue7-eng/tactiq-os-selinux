@@ -38,7 +38,6 @@ allow tactiq_measurement_t tactiq_edge_model_t:file mmap_read_file_perms;
 # --- Write measurement results to the measurement data tree ---
 allow tactiq_measurement_t tactiq_measurement_data_t:dir { search add_name remove_name write open getattr };
 allow tactiq_measurement_t tactiq_measurement_data_t:file { create open append write getattr setattr };
-files_filetrans(tactiq_measurement_t, tactiq_measurement_data_t, { dir file })
 
 # --- Operator log (probe prints verdicts/latency) ---
 logging_send_syslog_msg(tactiq_measurement_t)
@@ -52,3 +51,26 @@ require { type tactiq_edge_runtime_t; type tactiq_edge_daemon_t; }
 allow tactiq_measurement_t tactiq_edge_runtime_t:dir search_dir_perms;
 allow tactiq_measurement_t tactiq_edge_runtime_t:sock_file { read write getattr };
 allow tactiq_measurement_t tactiq_edge_daemon_t:unix_stream_socket connectto;
+
+########################################
+# DEV-ONLY capture channels (whole module is dev-gated; see header).
+# The probe runner script stays in the init domain; only binaries
+# transition. These allows let the headless capture channels write
+# into the measurement tree instead of fighting the vault label.
+########################################
+require { type auditd_t; type auditctl_t; type dmesg_t; type systemd_journal_init_t; }
+# --- auditd -> /data/tactiq/measurement/audit (log_file redirect, dev image) ---
+# Moved from the former DEV-ONLY block in tactiq_edge_daemon.te,
+# retargeted from tactiq_vault_data_t to the measurement label.
+allow auditd_t tactiq_measurement_data_t:dir { search add_name write getattr };
+allow auditd_t tactiq_measurement_data_t:file { create open append getattr setattr };
+allow auditctl_t tactiq_measurement_data_t:dir { search getattr };
+allow auditctl_t tactiq_measurement_data_t:file { getattr write append };
+# --- trap channel: dmesg/journalctl stdout > measurement files ---
+# fds opened by the init-domain runner; tools inherit and write.
+allow dmesg_t tactiq_measurement_data_t:file { getattr write append };
+allow systemd_journal_init_t tactiq_measurement_data_t:file { getattr write append };
+# --- daemon stdout/stderr capture (edge-daemon.log, fd from runner) ---
+# Dev capture only: prod policy never contains this module, so the
+# product daemon keeps zero disk write in the product policy.
+allow tactiq_edge_daemon_t tactiq_measurement_data_t:file { getattr write append };
