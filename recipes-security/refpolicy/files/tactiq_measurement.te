@@ -68,9 +68,9 @@ allow auditctl_t tactiq_measurement_data_t:dir { search getattr };
 allow auditctl_t tactiq_measurement_data_t:file { getattr write append };
 # --- trap channel: dmesg/journalctl stdout > measurement files ---
 # fds opened by the init-domain runner; tools inherit and write.
-allow dmesg_t tactiq_measurement_data_t:file { getattr write append };
-allow systemd_journal_init_t tactiq_measurement_data_t:file { getattr write append };
+allow dmesg_t tactiq_measurement_data_t:file { ioctl getattr write append };
+allow systemd_journal_init_t tactiq_measurement_data_t:file { ioctl getattr write append };
 # --- daemon stdout/stderr capture (edge-daemon.log, fd from runner) ---
 # Dev capture only: prod policy never contains this module, so the
 # product daemon keeps zero disk write in the product policy.
-allow tactiq_edge_daemon_t tactiq_measurement_data_t:file { getattr write append };
+allow tactiq_edge_daemon_t tactiq_measurement_data_t:file { ioctl getattr write append };
