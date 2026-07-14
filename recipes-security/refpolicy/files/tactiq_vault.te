@@ -1,4 +1,4 @@
-policy_module(tactiq_vault, 2.0.0)
+policy_module(tactiq_vault, 2.0.1)
 
 ########################################
 # Type declarations
@@ -10,6 +10,11 @@ type tactiq_vault_conf_t;
 type tactiq_vault_log_t;
 type tactiq_vault_var_t;
 type tactiq_vault_data_t;
+
+# tactiq_vault_data_t is assigned by relabel (restorecon / setfiles) and by
+# fs-wide context= mount of /data. Both require the file_type attribute;
+# without files_type() the relabel is denied and /data stays unlabeled_t.
+files_type(tactiq_vault_data_t)
 
 # Transition: systemd → tactiq_vault_t
 init_daemon_domain(tactiq_vault_t, tactiq_vault_exec_t)
