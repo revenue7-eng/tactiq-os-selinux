@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.0.0)
+policy_module(tactiq_rauc, 2.1.0)
 
 ########################################
 # Type declarations
@@ -10,6 +10,12 @@ type tactiq_rauc_conf_t;
 type tactiq_rauc_log_t;
 type tactiq_rauc_var_t;
 type tactiq_rauc_bundle_t;
+
+# Bootloader environment tools (fw_setenv/fw_printenv, libubootenv).
+# Dedicated type instead of corecmd_exec_bin: a domain with sys_admin,
+# sys_rawio and raw disk write must not be allowed to exec arbitrary bin_t.
+type tactiq_ubootenv_exec_t;
+application_executable_file(tactiq_ubootenv_exec_t)
 
 # Transition: systemd → tactiq_rauc_t
 init_daemon_domain(tactiq_rauc_t, tactiq_rauc_exec_t)
@@ -23,17 +29,43 @@ allow tactiq_rauc_t self:process { signal_perms setrlimit };
 allow tactiq_rauc_t self:fifo_file rw_fifo_file_perms;
 allow tactiq_rauc_t self:unix_stream_socket create_stream_socket_perms;
 
-# --- D-Bus communication (RAUC uses D-Bus) ---
+# --- D-Bus communication ---
+# rauc.service (Type=dbus) owns de.pengutronix.rauc on the system bus;
+# rauc install is a D-Bus client of that service. Client domains are
+# wired via tactiq_rauc_dbus_chat() in tactiq_rauc.if — the CLI does NOT
+# transition into tactiq_rauc_t and must not (it would inherit raw disk
+# write). self:dbus send_msg covers the case where client and service
+# end up in the same domain.
+optional_policy(`
+    gen_require(`
+        type system_dbusd_t;
+        class dbus { acquire_svc send_msg };
+    ')
+
+    allow tactiq_rauc_t self:dbus send_msg;
+
+    dbus_system_bus_client(tactiq_rauc_t)
+    dbus_connect_system_bus(tactiq_rauc_t)
+
+    # Own the well-known name. No <associate> context is defined for
+    # de.pengutronix.rauc in the bus policy, so the name check falls
+    # back to the context of the bus daemon.
+    allow tactiq_rauc_t system_dbusd_t:dbus acquire_svc;
+')
 
 # --- Block device access (write to A/B partitions) ---
+# sys_admin also covers mount/umount of bundle squashfs (loopback).
 allow tactiq_rauc_t self:capability { sys_admin sys_rawio fowner fsetid mknod };
 storage_raw_read_fixed_disk(tactiq_rauc_t)
 storage_raw_write_fixed_disk(tactiq_rauc_t)
+dev_read_sysfs(tactiq_rauc_t)
 
-# --- Device mapper ---
+# --- Device mapper (dm-verity bundle format) ---
 dev_rw_lvm_control(tactiq_rauc_t)
 
-# --- Bundle verification (Ed25519 signature check) ---
+# --- Bundle verification ---
+# CMS signature (RFC 5652), X.509 chain against /etc/rauc/keyring.pem.
+# NOT Ed25519 — earlier comment described an imagined mechanism.
 allow tactiq_rauc_t tactiq_rauc_bundle_t:dir list_dir_perms;
 allow tactiq_rauc_t tactiq_rauc_bundle_t:file read_file_perms;
 
@@ -51,19 +83,16 @@ allow tactiq_rauc_t tactiq_rauc_var_t:dir manage_dir_perms;
 allow tactiq_rauc_t tactiq_rauc_var_t:file manage_file_perms;
 files_var_lib_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })
 
-# --- TPM access (RPMB anti-rollback counter via TPM) ---
-tactiq_tpm_access(tactiq_rauc_t)
-
-# --- Execute bootloader tools (grub-editenv, fw_setenv) ---
-corecmd_exec_bin(tactiq_rauc_t)
+# --- Execute bootloader environment tools (bootloader=uboot) ---
+# fw_setenv reads /etc/fw_env.config (files_read_etc_files below) and
+# writes the env area on the raw device (storage_raw_write above).
+# Runs in tactiq_rauc_t, no transition.
+can_exec(tactiq_rauc_t, tactiq_ubootenv_exec_t)
 
 # --- Network: download OTA bundles ---
 corenet_tcp_connect_http_port(tactiq_rauc_t)
 corenet_tcp_connect_http_cache_port(tactiq_rauc_t)
 sysnet_dns_name_resolve(tactiq_rauc_t)
-
-# --- Mount/unmount for bundle extraction ---
-allow tactiq_rauc_t self:capability { sys_admin };
 
 # --- Temporary files for bundle extraction ---
 files_tmp_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })

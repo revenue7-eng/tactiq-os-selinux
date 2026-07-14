@@ -14,3 +14,9 @@
 
 # Runtime state (slot status, boot counter)
 /var/lib/tactiq/rauc(/.*)?		gen_context(system_u:object_r:tactiq_rauc_var_t,s0)
+
+# Bootloader environment tools (libubootenv; bootloader=uboot)
+/usr/bin/fw_setenv			gen_context(system_u:object_r:tactiq_ubootenv_exec_t,s0)
+/usr/bin/fw_printenv			gen_context(system_u:object_r:tactiq_ubootenv_exec_t,s0)
+/usr/sbin/fw_setenv			gen_context(system_u:object_r:tactiq_ubootenv_exec_t,s0)
+/usr/sbin/fw_printenv			gen_context(system_u:object_r:tactiq_ubootenv_exec_t,s0)
