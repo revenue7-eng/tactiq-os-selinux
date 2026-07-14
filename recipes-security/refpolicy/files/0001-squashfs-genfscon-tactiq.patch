@@ -26,3 +26,4 @@ Upstream-Status: Inappropriate [TactiQ distro-specific labeling decision]
 +genfscon squashfs / gen_context(system_u:object_r:tactiq_squashfs_t,s0)
  fs_use_xattr ubifs gen_context(system_u:object_r:fs_t,s0);
  fs_use_xattr virtiofs gen_context(system_u:object_r:fs_t,s0);
+ fs_use_xattr xfs gen_context(system_u:object_r:fs_t,s0);
