@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.1.0)
+policy_module(tactiq_rauc, 2.2.0)
 
 ########################################
 # Type declarations
@@ -16,6 +16,11 @@ type tactiq_rauc_bundle_t;
 # sys_rawio and raw disk write must not be allowed to exec arbitrary bin_t.
 type tactiq_ubootenv_exec_t;
 application_executable_file(tactiq_ubootenv_exec_t)
+
+# Mount tree under /run/rauc (RuntimeDirectory=rauc/mnt in rauc.service).
+# RAUC creates per-slot mountpoint dirs and a rootfs.tmp-link symlink here.
+type tactiq_rauc_runtime_t;
+files_type(tactiq_rauc_runtime_t)
 
 # Transition: systemd → tactiq_rauc_t
 init_daemon_domain(tactiq_rauc_t, tactiq_rauc_exec_t)
@@ -58,6 +63,9 @@ optional_policy(`
 allow tactiq_rauc_t self:capability { sys_admin sys_rawio fowner fsetid mknod };
 storage_raw_read_fixed_disk(tactiq_rauc_t)
 storage_raw_write_fixed_disk(tactiq_rauc_t)
+# SD/MMC card slots are removable_device_t (observed on Rock 5A mmcblk1):
+storage_raw_read_removable_device(tactiq_rauc_t)
+storage_raw_write_removable_device(tactiq_rauc_t)
 dev_read_sysfs(tactiq_rauc_t)
 
 # --- Device mapper (dm-verity bundle format) ---
@@ -88,6 +96,43 @@ files_var_lib_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })
 # writes the env area on the raw device (storage_raw_write above).
 # Runs in tactiq_rauc_t, no transition.
 can_exec(tactiq_rauc_t, tactiq_ubootenv_exec_t)
+
+# --- Runtime mount tree /run/rauc ---
+manage_dirs_pattern(tactiq_rauc_t, tactiq_rauc_runtime_t, tactiq_rauc_runtime_t)
+manage_files_pattern(tactiq_rauc_t, tactiq_rauc_runtime_t, tactiq_rauc_runtime_t)
+manage_lnk_files_pattern(tactiq_rauc_t, tactiq_rauc_runtime_t, tactiq_rauc_runtime_t)
+allow tactiq_rauc_t tactiq_rauc_runtime_t:dir mounton;
+# Daemon-created entries under /run get the runtime type even without
+# restorecon; systemd labels the RuntimeDirectory itself per file_contexts.
+gen_require(`
+    type var_run_t;
+')
+filetrans_pattern(tactiq_rauc_t, var_run_t, tactiq_rauc_runtime_t, { dir file lnk_file })
+allow tactiq_rauc_t var_run_t:dir { getattr search };
+
+# --- Slot filesystem mount/unmount (bundle install path) ---
+# RAUC execs /usr/bin/mount (util-linux) rather than mount(2) directly.
+mount_exec(tactiq_rauc_t)
+mount_list_runtime(tactiq_rauc_t)
+gen_require(`
+    type fs_t, tmpfs_t;
+')
+allow tactiq_rauc_t fs_t:filesystem { getattr mount remount unmount };
+fs_getattr_tmpfs(tactiq_rauc_t)
+# Slot B filesystem is unlabeled before the first labeled image lands there;
+# RAUC must at least traverse it. Revisit after first successful install:
+# per-slot status file writes may need more than list access.
+kernel_list_unlabeled(tactiq_rauc_t)
+# mount tries to lower kernel thread sched prio; harmless, silence it.
+gen_require(`
+    type kernel_t;
+')
+dontaudit tactiq_rauc_t kernel_t:process setsched;
+
+# --- OpenSSL init & system identity (CMS verification path) ---
+miscfiles_read_generic_certs(tactiq_rauc_t)
+files_read_etc_runtime_files(tactiq_rauc_t)
+kernel_read_kernel_sysctls(tactiq_rauc_t)
 
 # --- Network: download OTA bundles ---
 corenet_tcp_connect_http_port(tactiq_rauc_t)

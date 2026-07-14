@@ -79,3 +79,17 @@ kernel_read_system_state(tactiq_vault_t)
 files_read_etc_files(tactiq_vault_t)
 miscfiles_read_localization(tactiq_vault_t)
 dev_read_urand(tactiq_vault_t)
+
+########################################
+# data.mount: systemd mounts p5 with
+# context=system_u:object_r:tactiq_vault_data_t:s0 (dev scaffolding until
+# the LUKS unlock unit exists). The context= option makes mount(8) perform
+# a filesystem-class relabel, which needs explicit permission (observed
+# enforcing failure of data.mount; confirmed working in permissive).
+########################################
+gen_require(`
+    type mount_t, setfiles_t;
+')
+allow mount_t tactiq_vault_data_t:filesystem { getattr mount remount unmount relabelfrom relabelto };
+# restorecon in data-tactiq-dirs.service stats the filesystem:
+allow setfiles_t tactiq_vault_data_t:filesystem getattr;
