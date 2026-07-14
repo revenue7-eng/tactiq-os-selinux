@@ -9,10 +9,14 @@ A dedicated type (not fs_t) keeps the bundle filesystem distinguishable:
 only tactiq_rauc_t is granted mount/read on it.
 
 Observed on Rock 5A, first RAUC install attempt, 2026-07-15.
+
+Upstream-Status: Inappropriate [TactiQ distro-specific labeling decision]
+
 ---
 --- a/policy/modules/kernel/filesystem.te
 +++ b/policy/modules/kernel/filesystem.te
 @@ -39,7 +39,10 @@
+ fs_use_xattr jfs gen_context(system_u:object_r:fs_t,s0);
  fs_use_xattr lustre gen_context(system_u:object_r:fs_t,s0);
  fs_use_xattr overlay gen_context(system_u:object_r:fs_t,s0);
 -fs_use_xattr squashfs gen_context(system_u:object_r:fs_t,s0);
