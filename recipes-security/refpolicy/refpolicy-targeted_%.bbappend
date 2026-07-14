@@ -27,6 +27,7 @@ SRC_URI += " \
     file://tactiq_rauc.te \
     file://tactiq_rauc.fc \
     file://tactiq_rauc.if \
+    file://0001-squashfs-genfscon-tactiq.patch \
 "
 
 do_compile:prepend() {

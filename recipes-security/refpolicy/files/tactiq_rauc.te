@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.2.0)
+policy_module(tactiq_rauc, 2.3.0)
 
 ########################################
 # Type declarations
@@ -6,10 +6,18 @@ policy_module(tactiq_rauc, 2.2.0)
 
 type tactiq_rauc_t;
 type tactiq_rauc_exec_t;
+
+# files_type & co: without a file-type attribute these cannot associate
+# with a persistent filesystem (observed: associate denials on ext4 when
+# the staging dir moved off tmpfs).
 type tactiq_rauc_conf_t;
+files_config_file(tactiq_rauc_conf_t)
 type tactiq_rauc_log_t;
+logging_log_file(tactiq_rauc_log_t)
 type tactiq_rauc_var_t;
+files_type(tactiq_rauc_var_t)
 type tactiq_rauc_bundle_t;
+files_type(tactiq_rauc_bundle_t)
 
 # Bootloader environment tools (fw_setenv/fw_printenv, libubootenv).
 # Dedicated type instead of corecmd_exec_bin: a domain with sys_admin,
@@ -119,6 +127,22 @@ gen_require(`
 ')
 allow tactiq_rauc_t fs_t:filesystem { getattr mount remount unmount };
 fs_getattr_tmpfs(tactiq_rauc_t)
+
+# Loop allocation for bundle mount: RAUC opens /dev/loop-control.
+gen_require(`
+    type loop_control_device_t;
+')
+allow tactiq_rauc_t loop_control_device_t:chr_file rw_chr_file_perms;
+
+# Mounted verity bundle (squashfs): dedicated type from the base-policy
+# genfscon (see 0001-squashfs-genfscon-tactiq.patch). Only this domain
+# may mount and read the bundle filesystem.
+gen_require(`
+    type tactiq_squashfs_t;
+')
+allow tactiq_rauc_t tactiq_squashfs_t:filesystem { getattr mount unmount };
+allow tactiq_rauc_t tactiq_squashfs_t:dir list_dir_perms;
+allow tactiq_rauc_t tactiq_squashfs_t:file read_file_perms;
 # Slot B filesystem is unlabeled before the first labeled image lands there;
 # RAUC must at least traverse it. Revisit after first successful install:
 # per-slot status file writes may need more than list access.
