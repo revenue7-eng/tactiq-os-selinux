@@ -1,0 +1,29 @@
+Subject: squashfs: genfscon with dedicated type instead of fs_use_xattr
+
+RAUC verity bundles are squashfs images built on the host and carry no
+xattr table; with fs_use_xattr the kernel refuses to mount them
+(EOPNOTSUPP, "SELinux: (dev dm-0, type squashfs) has no xattr support").
+Bundle integrity is enforced by CMS signature verification before mount
+and dm-verity during reads, so per-file labels add nothing here.
+A dedicated type (not fs_t) keeps the bundle filesystem distinguishable:
+only tactiq_rauc_t is granted mount/read on it.
+
+Observed on Rock 5A, first RAUC install attempt, 2026-07-15.
+
+Upstream-Status: Inappropriate [TactiQ distro-specific labeling decision]
+
+---
+--- a/policy/modules/kernel/filesystem.te
++++ b/policy/modules/kernel/filesystem.te
+@@ -39,7 +39,10 @@
+ fs_use_xattr jfs gen_context(system_u:object_r:fs_t,s0);
+ fs_use_xattr lustre gen_context(system_u:object_r:fs_t,s0);
+ fs_use_xattr overlay gen_context(system_u:object_r:fs_t,s0);
+-fs_use_xattr squashfs gen_context(system_u:object_r:fs_t,s0);
++# TactiQ: RAUC verity bundles carry no xattrs; see patch header.
++type tactiq_squashfs_t;
++fs_type(tactiq_squashfs_t)
++genfscon squashfs / gen_context(system_u:object_r:tactiq_squashfs_t,s0)
+ fs_use_xattr ubifs gen_context(system_u:object_r:fs_t,s0);
+ fs_use_xattr virtiofs gen_context(system_u:object_r:fs_t,s0);
+ fs_use_xattr xfs gen_context(system_u:object_r:fs_t,s0);
