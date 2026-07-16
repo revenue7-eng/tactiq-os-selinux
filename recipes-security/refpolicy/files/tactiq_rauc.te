@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.5.0)
+policy_module(tactiq_rauc, 2.6.0)
 
 ########################################
 # Type declarations
@@ -18,6 +18,13 @@ type tactiq_rauc_var_t;
 files_type(tactiq_rauc_var_t)
 type tactiq_rauc_bundle_t;
 files_type(tactiq_rauc_bundle_t)
+
+# Slot status file (slot.raucs) written by RAUC into the root of the
+# target partition via atomic temp+rename.  type_transition below
+# ensures files created by tactiq_rauc_t in root_t dirs receive this
+# type, keeping the write grant narrow.
+type tactiq_rauc_status_t;
+files_type(tactiq_rauc_status_t)
 
 # Bootloader environment tools (fw_setenv/fw_printenv, libubootenv).
 # Dedicated type instead of corecmd_exec_bin: a domain with sys_admin,
@@ -98,6 +105,16 @@ dev_rw_lvm_control(tactiq_rauc_t)
 allow tactiq_rauc_t tactiq_rauc_bundle_t:dir list_dir_perms;
 allow tactiq_rauc_t tactiq_rauc_bundle_t:file read_file_perms;
 
+# --- Bundle source: /data partition (air-gapped path) ---
+# On air-gapped devices bundles arrive via /data (context=tactiq_vault_data_t).
+# Read-only: no write, no exec.
+gen_require(`
+    type tactiq_vault_data_t;
+')
+allow tactiq_rauc_t tactiq_vault_data_t:dir search;
+allow tactiq_rauc_t tactiq_vault_data_t:file { read open getattr lock };
+allow tactiq_rauc_t tactiq_vault_data_t:filesystem getattr;
+
 # --- Configuration (system.conf, keyring) ---
 allow tactiq_rauc_t tactiq_rauc_conf_t:dir list_dir_perms;
 allow tactiq_rauc_t tactiq_rauc_conf_t:file read_file_perms;
@@ -111,6 +128,26 @@ logging_log_filetrans(tactiq_rauc_t, tactiq_rauc_log_t, file)
 allow tactiq_rauc_t tactiq_rauc_var_t:dir manage_dir_perms;
 allow tactiq_rauc_t tactiq_rauc_var_t:file manage_file_perms;
 files_var_lib_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })
+
+# --- Slot status (slot.raucs on target rootfs) ---
+# RAUC writes slot.raucs via atomic temp+rename in the root of the
+# target partition (type root_t).  type_transition narrows the grant:
+# only files created by tactiq_rauc_t in root_t dirs receive
+# tactiq_rauc_status_t; no other domain is affected.
+#
+# Flow: create slot.raucs.XXXXXX (temp) → write → rename to slot.raucs
+#       → on next install: read existing, create new temp, rename, unlink old.
+gen_require(`
+    type root_t;
+')
+type_transition tactiq_rauc_t root_t:file tactiq_rauc_status_t;
+allow tactiq_rauc_t root_t:dir { search write add_name remove_name };
+allow tactiq_rauc_t tactiq_rauc_status_t:file manage_file_perms;
+# Transitional: existing slot.raucs retains root_t until the first
+# install under this policy re-creates it as tactiq_rauc_status_t.
+# After that install, all slot.raucs files carry tactiq_rauc_status_t
+# and these root_t:file rules become dead code.
+allow tactiq_rauc_t root_t:file { read open getattr setattr rename unlink };
 
 # --- Execute bootloader environment tools (bootloader=uboot) ---
 # fw_setenv reads /etc/fw_env.config (files_read_etc_files below) and
