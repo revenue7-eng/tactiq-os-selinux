@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.6.0)
+policy_module(tactiq_rauc, 2.7.0)
 
 ########################################
 # Type declarations
@@ -25,6 +25,12 @@ files_type(tactiq_rauc_bundle_t)
 # type, keeping the write grant narrow.
 type tactiq_rauc_status_t;
 files_type(tactiq_rauc_status_t)
+
+# Boot partition content (kernel Image, dtb, extlinux.conf).
+# Labeled at build time by setfiles in tactiq-boot-image.bb;
+# mkfs.ext4 -d carries xattrs into the ext4 image.
+type tactiq_boot_content_t;
+files_type(tactiq_boot_content_t)
 
 # Bootloader environment tools (fw_setenv/fw_printenv, libubootenv).
 # Dedicated type instead of corecmd_exec_bin: a domain with sys_admin,
@@ -202,9 +208,14 @@ gen_require(`
 allow tactiq_rauc_t tactiq_squashfs_t:filesystem { getattr mount unmount };
 allow tactiq_rauc_t tactiq_squashfs_t:dir list_dir_perms;
 allow tactiq_rauc_t tactiq_squashfs_t:file read_file_perms;
-# Slot B filesystem is unlabeled before the first labeled image lands there;
-# RAUC must at least traverse it. Revisit after first successful install:
-# per-slot status file writes may need more than list access.
+# --- Boot partition content (kernel, dtb, extlinux.conf) ---
+# RAUC mounts boot slot after dd to write slot.raucs.
+# Files labeled tactiq_boot_content_t at build time (setfiles).
+allow tactiq_rauc_t tactiq_boot_content_t:dir list_dir_perms;
+allow tactiq_rauc_t tactiq_boot_content_t:file read_file_perms;
+# Safety net: first flash of a pre-labeling image may still carry
+# unlabeled_t on boot partition.  Remove after one full A/B cycle
+# with labeled images.
 kernel_list_unlabeled(tactiq_rauc_t)
 # mount tries to lower kernel thread sched prio; harmless, silence it.
 gen_require(`
