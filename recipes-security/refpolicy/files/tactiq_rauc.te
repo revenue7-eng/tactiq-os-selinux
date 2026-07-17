@@ -121,6 +121,13 @@ allow tactiq_rauc_t tactiq_vault_data_t:dir search;
 allow tactiq_rauc_t tactiq_vault_data_t:file { read open getattr lock };
 allow tactiq_rauc_t tactiq_vault_data_t:filesystem getattr;
 
+# udev probes loop-backed bundle devices and hits the vault label;
+# harmless — silence it.
+gen_require(`
+    type udev_t;
+')
+dontaudit udev_t tactiq_vault_data_t:file getattr;
+
 # --- Configuration (system.conf, keyring) ---
 allow tactiq_rauc_t tactiq_rauc_conf_t:dir list_dir_perms;
 allow tactiq_rauc_t tactiq_rauc_conf_t:file read_file_perms;
