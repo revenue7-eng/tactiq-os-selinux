@@ -1,6 +1,3 @@
-# TPM daemon binary
-/opt/tactiq/bin/tactiq-tpm		--	gen_context(system_u:object_r:tactiq_tpm_exec_t,s0)
-
 # TPM device nodes
 /dev/tpm0			-c	gen_context(system_u:object_r:tactiq_tpm_device_t,s0)
 /dev/tpmrm0			-c	gen_context(system_u:object_r:tactiq_tpm_device_t,s0)
@@ -9,9 +6,14 @@
 /etc/tactiq/tpm(/.*)?			gen_context(system_u:object_r:tactiq_tpm_conf_t,s0)
 /etc/tpm2-tss(/.*)?			gen_context(system_u:object_r:tactiq_tpm_conf_t,s0)
 
+# TPM daemon binary
+/opt/tactiq/bin/tactiq-tpm		--	gen_context(system_u:object_r:tactiq_tpm_exec_t,s0)
+
+# Resource manager socket
+/run/tpm2-abrmd\.sock		-s	gen_context(system_u:object_r:tactiq_tpm_var_t,s0)
+
+# Runtime state & resource manager
+/var/lib/tactiq/tpm(/.*)?		gen_context(system_u:object_r:tactiq_tpm_var_t,s0)
+
 # Logs
 /var/log/tactiq/tpm(/.*)?		gen_context(system_u:object_r:tactiq_tpm_log_t,s0)
-
-# Runtime state & resource manager socket
-/var/lib/tactiq/tpm(/.*)?		gen_context(system_u:object_r:tactiq_tpm_var_t,s0)
-/run/tpm2-abrmd\.sock		-s	gen_context(system_u:object_r:tactiq_tpm_var_t,s0)

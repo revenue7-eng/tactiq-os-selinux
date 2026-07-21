@@ -1,0 +1,180 @@
+squashfs: upstream pair, interfaces and udev access from refpolicy PR #1181
+
+Test build of PR #1181 review fixes against pinned refpolicy:
+squashfs_t genfs fallback (keeping fs_use_xattr), squashfs
+interfaces in filesystem.if, kernel_dontaudit_setsched, udev
+access to rauc bundle files (loop backing file probing).
+
+Upstream-Status: Submitted [https://github.com/SELinuxProject/refpolicy/pull/1181]
+
+--- a/policy/modules/kernel/filesystem.te	2026-07-20 16:58:19.833644080 +0000
++++ b/policy/modules/kernel/filesystem.te	2026-07-20 16:58:38.351780666 +0000
+@@ -191,6 +191,17 @@
+ fs_type(spufs_t)
+ genfscon spufs / gen_context(system_u:object_r:spufs_t,s0)
+ files_mountpoint(spufs_t)
++#
++# squashfs_t is the genfs fallback type for squashfs images built
++# without an xattr table, e.g. RAUC verity bundles.  Images carrying
++# xattrs (CONFIG_SQUASHFS_XATTR=y) continue to be labeled by the
++# fs_use_xattr entry above; since kernel v5.12, xattr-less images
++# fall back to this genfscon rule instead of failing to mount.
++#
++type squashfs_t;
++fs_noxattr_type(squashfs_t)
++files_mountpoint(squashfs_t)
++genfscon squashfs / gen_context(system_u:object_r:squashfs_t,s0)
+ 
+ type sysv_t;
+ fs_noxattr_type(sysv_t)
+--- a/policy/modules/kernel/filesystem.if	2026-07-20 16:58:19.833644080 +0000
++++ b/policy/modules/kernel/filesystem.if	2026-07-20 16:58:49.277642971 +0000
+@@ -5897,6 +5897,105 @@
+ 
+ ########################################
+ ## <summary>
++##	Mount a squashfs filesystem labeled
++##	with the genfs fallback type.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`fs_mount_squashfs',`
++	gen_require(`
++		type squashfs_t;
++	')
++
++	allow $1 squashfs_t:filesystem mount;
++')
++
++########################################
++## <summary>
++##	Unmount a squashfs filesystem labeled
++##	with the genfs fallback type.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`fs_unmount_squashfs',`
++	gen_require(`
++		type squashfs_t;
++	')
++
++	allow $1 squashfs_t:filesystem unmount;
++')
++
++########################################
++## <summary>
++##	Get the attributes of a squashfs
++##	filesystem labeled with the genfs
++##	fallback type.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`fs_getattr_squashfs',`
++	gen_require(`
++		type squashfs_t;
++	')
++
++	allow $1 squashfs_t:filesystem getattr;
++')
++
++########################################
++## <summary>
++##	List the contents of directories on a
++##	squashfs filesystem labeled with the
++##	genfs fallback type.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`fs_list_squashfs',`
++	gen_require(`
++		type squashfs_t;
++	')
++
++	allow $1 squashfs_t:dir list_dir_perms;
++')
++
++########################################
++## <summary>
++##	Read files on a squashfs filesystem
++##	labeled with the genfs fallback type.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`fs_read_squashfs_files',`
++	gen_require(`
++		type squashfs_t;
++	')
++
++	read_files_pattern($1, squashfs_t, squashfs_t)
++	read_lnk_files_pattern($1, squashfs_t, squashfs_t)
++')
++
++
++########################################
++## <summary>
+ ##	Mount a tmpfs filesystem.
+ ## </summary>
+ ## <param name="domain">
+--- a/policy/modules/kernel/kernel.if	2026-07-20 16:58:19.837644080 +0000
++++ b/policy/modules/kernel/kernel.if	2026-07-20 16:58:49.332308396 +0000
+@@ -166,6 +166,26 @@
+ 
+ ########################################
+ ## <summary>
++##	Do not audit attempts to set the
++##	priority of kernel threads.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain to not audit.
++##	</summary>
++## </param>
++#
++interface(`kernel_dontaudit_setsched',`
++	gen_require(`
++		type kernel_t;
++	')
++
++	dontaudit $1 kernel_t:process setsched;
++')
++
++
++########################################
++## <summary>
+ ##	Send a SIGCHLD signal to kernel threads.
+ ## </summary>
+ ## <param name="domain">
+--- a/policy/modules/system/udev.te	2026-07-20 16:58:19.897644078 +0000
++++ b/policy/modules/system/udev.te	2026-07-20 21:27:34.688517628 +0000
+@@ -370,6 +370,11 @@
+ ')
+ 
+ optional_policy(`
++	# probing loop device backing files during bundle installation
++	rauc_getattr_bundle_files(udev_t)
++')
++
++optional_policy(`
+ 	unconfined_signal(udev_t)
+ ')
+ 

@@ -1,0 +1,9 @@
+#
+# squashfs_t is the type for squashfs file systems.
+# squashfs is read-only and does not support xattrs;
+# the fs_use_xattr entry above never matches.
+#
+type squashfs_t;
+fs_noxattr_type(squashfs_t)
+files_mountpoint(squashfs_t)
+genfscon squashfs / gen_context(system_u:object_r:squashfs_t,s0)
