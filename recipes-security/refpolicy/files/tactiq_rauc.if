@@ -2,6 +2,32 @@
 
 ########################################
 ## <summary>
+##   Exchange D-Bus messages with the RAUC service
+##   (de.pengutronix.rauc on the system bus).
+##   Required by any domain running rauc install/status
+##   as a CLI client. The client does NOT transition into
+##   tactiq_rauc_t.
+## </summary>
+## <param name="domain">
+##   <summary>Client domain.</summary>
+## </param>
+#
+interface(`tactiq_rauc_dbus_chat',`
+    gen_require(`
+        type tactiq_rauc_t;
+        class dbus send_msg;
+    ')
+
+    allow $1 tactiq_rauc_t:dbus send_msg;
+    allow tactiq_rauc_t $1:dbus send_msg;
+
+    optional_policy(`
+        dbus_system_bus_client($1)
+    ')
+')
+
+########################################
+## <summary>
 ##   Read RAUC slot status (which partition is active).
 ## </summary>
 ## <param name="domain">
@@ -32,30 +58,4 @@ interface(`tactiq_rauc_write_bundle',`
 
     allow $1 tactiq_rauc_bundle_t:dir { search add_name write };
     allow $1 tactiq_rauc_bundle_t:file { create write open getattr };
-')
-
-########################################
-## <summary>
-##   Exchange D-Bus messages with the RAUC service
-##   (de.pengutronix.rauc on the system bus).
-##   Required by any domain running rauc install/status
-##   as a CLI client. The client does NOT transition into
-##   tactiq_rauc_t.
-## </summary>
-## <param name="domain">
-##   <summary>Client domain.</summary>
-## </param>
-#
-interface(`tactiq_rauc_dbus_chat',`
-    gen_require(`
-        type tactiq_rauc_t;
-        class dbus send_msg;
-    ')
-
-    allow $1 tactiq_rauc_t:dbus send_msg;
-    allow tactiq_rauc_t $1:dbus send_msg;
-
-    optional_policy(`
-        dbus_system_bus_client($1)
-    ')
 ')

@@ -1,67 +1,169 @@
-policy_module(tactiq_rauc, 2.7.0)
+policy_module(tactiq_rauc, 2.8.0)
 
 ########################################
-# Type declarations
-########################################
+#
+# Declarations
+#
 
-type tactiq_rauc_t;
-type tactiq_rauc_exec_t;
-
-# files_type & co: without a file-type attribute these cannot associate
-# with a persistent filesystem (observed: associate denials on ext4 when
-# the staging dir moved off tmpfs).
-type tactiq_rauc_conf_t;
-files_config_file(tactiq_rauc_conf_t)
-type tactiq_rauc_log_t;
-logging_log_file(tactiq_rauc_log_t)
-type tactiq_rauc_var_t;
-files_type(tactiq_rauc_var_t)
-type tactiq_rauc_bundle_t;
-files_type(tactiq_rauc_bundle_t)
-
-# Slot status file (slot.raucs) written by RAUC into the root of the
-# target partition via atomic temp+rename.  type_transition below
-# ensures files created by tactiq_rauc_t in root_t dirs receive this
-# type, keeping the write grant narrow.
-type tactiq_rauc_status_t;
-files_type(tactiq_rauc_status_t)
-
-# Boot partition content (kernel Image, dtb, extlinux.conf).
-# Labeled at build time by setfiles in tactiq-boot-image.bb;
-# mkfs.ext4 -d carries xattrs into the ext4 image.
 type tactiq_boot_content_t;
 files_type(tactiq_boot_content_t)
 
-# Bootloader environment tools (fw_setenv/fw_printenv, libubootenv).
-# Dedicated type instead of corecmd_exec_bin: a domain with sys_admin,
-# sys_rawio and raw disk write must not be allowed to exec arbitrary bin_t.
-type tactiq_ubootenv_exec_t;
-application_executable_file(tactiq_ubootenv_exec_t)
+type tactiq_rauc_t;
+type tactiq_rauc_exec_t;
+init_daemon_domain(tactiq_rauc_t, tactiq_rauc_exec_t)
 
-# Mount tree under /run/rauc (RuntimeDirectory=rauc/mnt in rauc.service).
-# RAUC creates per-slot mountpoint dirs and a rootfs.tmp-link symlink here.
+type tactiq_rauc_bundle_t;
+files_type(tactiq_rauc_bundle_t)
+
+type tactiq_rauc_conf_t;
+files_config_file(tactiq_rauc_conf_t)
+
+type tactiq_rauc_log_t;
+logging_log_file(tactiq_rauc_log_t)
+
 type tactiq_rauc_runtime_t;
 files_type(tactiq_rauc_runtime_t)
 
-# Transition: systemd → tactiq_rauc_t
-init_daemon_domain(tactiq_rauc_t, tactiq_rauc_exec_t)
+type tactiq_rauc_status_t;
+files_type(tactiq_rauc_status_t)
+
+type tactiq_rauc_var_t;
+files_type(tactiq_rauc_var_t)
+
+type tactiq_ubootenv_exec_t;
+application_executable_file(tactiq_ubootenv_exec_t)
 
 ########################################
-# Permissions
-########################################
+#
+# Local policy — tactiq_rauc_t
+#
 
-# --- Self ---
+# --- Self rules ---
+allow tactiq_rauc_t self:capability { fowner fsetid mknod sys_admin sys_rawio };
 allow tactiq_rauc_t self:process { signal_perms setrlimit };
 allow tactiq_rauc_t self:fifo_file rw_fifo_file_perms;
 allow tactiq_rauc_t self:unix_stream_socket create_stream_socket_perms;
 
-# --- D-Bus communication ---
-# rauc.service (Type=dbus) owns de.pengutronix.rauc on the system bus;
-# rauc install is a D-Bus client of that service. Client domains are
-# wired via tactiq_rauc_dbus_chat() in tactiq_rauc.if — the CLI does NOT
-# transition into tactiq_rauc_t and must not (it would inherit raw disk
-# write). self:dbus send_msg covers the case where client and service
-# end up in the same domain.
+# --- Rules on owned objects, sorted by type ---
+
+# tactiq_boot_content_t
+allow tactiq_rauc_t tactiq_boot_content_t:dir list_dir_perms;
+allow tactiq_rauc_t tactiq_boot_content_t:file read_file_perms;
+
+# tactiq_rauc_bundle_t
+allow tactiq_rauc_t tactiq_rauc_bundle_t:dir list_dir_perms;
+allow tactiq_rauc_t tactiq_rauc_bundle_t:file read_file_perms;
+
+# tactiq_rauc_conf_t
+allow tactiq_rauc_t tactiq_rauc_conf_t:dir list_dir_perms;
+allow tactiq_rauc_t tactiq_rauc_conf_t:file read_file_perms;
+
+# tactiq_rauc_log_t
+allow tactiq_rauc_t tactiq_rauc_log_t:dir { search add_name };
+allow tactiq_rauc_t tactiq_rauc_log_t:file { create open append getattr };
+logging_log_filetrans(tactiq_rauc_t, tactiq_rauc_log_t, file)
+
+# tactiq_rauc_runtime_t
+manage_dirs_pattern(tactiq_rauc_t, tactiq_rauc_runtime_t, tactiq_rauc_runtime_t)
+manage_files_pattern(tactiq_rauc_t, tactiq_rauc_runtime_t, tactiq_rauc_runtime_t)
+manage_lnk_files_pattern(tactiq_rauc_t, tactiq_rauc_runtime_t, tactiq_rauc_runtime_t)
+allow tactiq_rauc_t tactiq_rauc_runtime_t:dir mounton;
+
+# tactiq_rauc_status_t — slot.raucs on target rootfs
+# RAUC writes slot.raucs via atomic temp+rename in the root of the
+# target partition (type root_t). type_transition narrows the grant:
+# only files created by tactiq_rauc_t in root_t dirs receive
+# tactiq_rauc_status_t; no other domain is affected.
+allow tactiq_rauc_t tactiq_rauc_status_t:file manage_file_perms;
+
+# tactiq_rauc_var_t
+allow tactiq_rauc_t tactiq_rauc_var_t:dir manage_dir_perms;
+allow tactiq_rauc_t tactiq_rauc_var_t:file manage_file_perms;
+files_var_lib_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })
+
+# tactiq_ubootenv_exec_t — fw_setenv/fw_printenv
+# Runs in tactiq_rauc_t, no domain transition.
+can_exec(tactiq_rauc_t, tactiq_ubootenv_exec_t)
+allow tactiq_rauc_t tactiq_ubootenv_exec_t:lnk_file read_lnk_file_perms;
+
+# --- Rules on objects from other modules, sorted alphabetically ---
+
+gen_require(`
+    type fs_t;
+    type kernel_t;
+    type loop_control_device_t;
+    type root_t;
+    type tactiq_squashfs_t;
+    type tactiq_vault_data_t;
+    type tmpfs_t;
+    type udev_t;
+    type var_lock_t;
+    type var_run_t;
+')
+
+# fs_t
+allow tactiq_rauc_t fs_t:filesystem { getattr mount remount unmount };
+
+# kernel_t
+dontaudit tactiq_rauc_t kernel_t:process setsched;
+
+# loop_control_device_t — loop allocation for bundle mount
+allow tactiq_rauc_t loop_control_device_t:chr_file rw_chr_file_perms;
+
+# root_t — slot.raucs type_transition and transitional access
+type_transition tactiq_rauc_t root_t:file tactiq_rauc_status_t;
+allow tactiq_rauc_t root_t:dir { search write add_name remove_name };
+# Transitional: existing slot.raucs retains root_t until the first
+# install under this policy re-creates it as tactiq_rauc_status_t.
+allow tactiq_rauc_t root_t:file { read open getattr setattr rename unlink };
+
+# tactiq_squashfs_t — mounted verity bundle (squashfs)
+allow tactiq_rauc_t tactiq_squashfs_t:filesystem { getattr mount unmount };
+allow tactiq_rauc_t tactiq_squashfs_t:dir list_dir_perms;
+allow tactiq_rauc_t tactiq_squashfs_t:file read_file_perms;
+
+# tactiq_vault_data_t — bundle source on /data (air-gapped path)
+allow tactiq_rauc_t tactiq_vault_data_t:dir search;
+allow tactiq_rauc_t tactiq_vault_data_t:file { read open getattr lock };
+allow tactiq_rauc_t tactiq_vault_data_t:filesystem getattr;
+dontaudit udev_t tactiq_vault_data_t:file getattr;
+
+# var_lock_t — fw_printenv/fw_setenv lock file
+allow tactiq_rauc_t var_lock_t:lnk_file read_lnk_file_perms;
+allow tactiq_rauc_t var_lock_t:dir rw_dir_perms;
+allow tactiq_rauc_t var_lock_t:file manage_file_perms;
+
+# var_run_t — runtime mount tree /run/rauc
+filetrans_pattern(tactiq_rauc_t, var_run_t, tactiq_rauc_runtime_t, { dir file lnk_file })
+allow tactiq_rauc_t var_run_t:dir { getattr search };
+
+# --- Calls to other modules, sorted alphabetically ---
+
+corenet_tcp_connect_http_cache_port(tactiq_rauc_t)
+corenet_tcp_connect_http_port(tactiq_rauc_t)
+dev_read_sysfs(tactiq_rauc_t)
+dev_read_urand(tactiq_rauc_t)
+dev_rw_lvm_control(tactiq_rauc_t)
+files_read_etc_files(tactiq_rauc_t)
+files_read_etc_runtime_files(tactiq_rauc_t)
+files_tmp_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })
+fs_getattr_tmpfs(tactiq_rauc_t)
+kernel_list_unlabeled(tactiq_rauc_t)
+kernel_read_kernel_sysctls(tactiq_rauc_t)
+kernel_read_system_state(tactiq_rauc_t)
+logging_send_syslog_msg(tactiq_rauc_t)
+miscfiles_read_generic_certs(tactiq_rauc_t)
+miscfiles_read_localization(tactiq_rauc_t)
+mount_exec(tactiq_rauc_t)
+mount_list_runtime(tactiq_rauc_t)
+storage_raw_read_fixed_disk(tactiq_rauc_t)
+storage_raw_read_removable_device(tactiq_rauc_t)
+storage_raw_write_fixed_disk(tactiq_rauc_t)
+storage_raw_write_removable_device(tactiq_rauc_t)
+sysnet_dns_name_resolve(tactiq_rauc_t)
+
+# --- Blocks, sorted: optional_policy by module name ---
+
 optional_policy(`
     gen_require(`
         type system_dbusd_t;
@@ -73,16 +175,9 @@ optional_policy(`
     dbus_system_bus_client(tactiq_rauc_t)
     dbus_connect_system_bus(tactiq_rauc_t)
 
-    # Own the well-known name. No <associate> context is defined for
-    # de.pengutronix.rauc in the bus policy, so the name check falls
-    # back to the context of the bus daemon.
     allow tactiq_rauc_t system_dbusd_t:dbus acquire_svc;
 ')
 
-# rauc-mark-good.service and admin `rauc status` execute /usr/bin/rauc
-# which does NOT transition from unconfined_t (init_daemon_domain covers
-# only init_t -> tactiq_rauc_t). The CLI runs as unconfined_t and sends
-# D-Bus messages to the daemon; the daemon must be allowed to reply.
 optional_policy(`
     gen_require(`
         type unconfined_t;
@@ -91,163 +186,3 @@ optional_policy(`
     allow tactiq_rauc_t unconfined_t:dbus send_msg;
     allow unconfined_t tactiq_rauc_t:dbus send_msg;
 ')
-
-# --- Block device access (write to A/B partitions) ---
-# sys_admin also covers mount/umount of bundle squashfs (loopback).
-allow tactiq_rauc_t self:capability { sys_admin sys_rawio fowner fsetid mknod };
-storage_raw_read_fixed_disk(tactiq_rauc_t)
-storage_raw_write_fixed_disk(tactiq_rauc_t)
-# SD/MMC card slots are removable_device_t (observed on Rock 5A mmcblk1):
-storage_raw_read_removable_device(tactiq_rauc_t)
-storage_raw_write_removable_device(tactiq_rauc_t)
-dev_read_sysfs(tactiq_rauc_t)
-
-# --- Device mapper (dm-verity bundle format) ---
-dev_rw_lvm_control(tactiq_rauc_t)
-
-# --- Bundle verification ---
-# CMS signature (RFC 5652), X.509 chain against /etc/rauc/keyring.pem.
-# NOT Ed25519 — earlier comment described an imagined mechanism.
-allow tactiq_rauc_t tactiq_rauc_bundle_t:dir list_dir_perms;
-allow tactiq_rauc_t tactiq_rauc_bundle_t:file read_file_perms;
-
-# --- Bundle source: /data partition (air-gapped path) ---
-# On air-gapped devices bundles arrive via /data (context=tactiq_vault_data_t).
-# Read-only: no write, no exec.
-gen_require(`
-    type tactiq_vault_data_t;
-')
-allow tactiq_rauc_t tactiq_vault_data_t:dir search;
-allow tactiq_rauc_t tactiq_vault_data_t:file { read open getattr lock };
-allow tactiq_rauc_t tactiq_vault_data_t:filesystem getattr;
-
-# udev probes loop-backed bundle devices and hits the vault label;
-# harmless — silence it.
-gen_require(`
-    type udev_t;
-')
-dontaudit udev_t tactiq_vault_data_t:file getattr;
-
-# --- Configuration (system.conf, keyring) ---
-allow tactiq_rauc_t tactiq_rauc_conf_t:dir list_dir_perms;
-allow tactiq_rauc_t tactiq_rauc_conf_t:file read_file_perms;
-
-# --- Logs (append-only) ---
-allow tactiq_rauc_t tactiq_rauc_log_t:dir { search add_name };
-allow tactiq_rauc_t tactiq_rauc_log_t:file { create open append getattr };
-logging_log_filetrans(tactiq_rauc_t, tactiq_rauc_log_t, file)
-
-# --- Runtime state (slot status, boot marker) ---
-allow tactiq_rauc_t tactiq_rauc_var_t:dir manage_dir_perms;
-allow tactiq_rauc_t tactiq_rauc_var_t:file manage_file_perms;
-files_var_lib_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })
-
-# --- Slot status (slot.raucs on target rootfs) ---
-# RAUC writes slot.raucs via atomic temp+rename in the root of the
-# target partition (type root_t).  type_transition narrows the grant:
-# only files created by tactiq_rauc_t in root_t dirs receive
-# tactiq_rauc_status_t; no other domain is affected.
-#
-# Flow: create slot.raucs.XXXXXX (temp) → write → rename to slot.raucs
-#       → on next install: read existing, create new temp, rename, unlink old.
-gen_require(`
-    type root_t;
-')
-type_transition tactiq_rauc_t root_t:file tactiq_rauc_status_t;
-allow tactiq_rauc_t root_t:dir { search write add_name remove_name };
-allow tactiq_rauc_t tactiq_rauc_status_t:file manage_file_perms;
-# Transitional: existing slot.raucs retains root_t until the first
-# install under this policy re-creates it as tactiq_rauc_status_t.
-# After that install, all slot.raucs files carry tactiq_rauc_status_t
-# and these root_t:file rules become dead code.
-allow tactiq_rauc_t root_t:file { read open getattr setattr rename unlink };
-
-# --- Execute bootloader environment tools (bootloader=uboot) ---
-# fw_setenv reads /etc/fw_env.config (files_read_etc_files below) and
-# writes the env area on the raw device (storage_raw_write above).
-# Runs in tactiq_rauc_t, no transition.
-can_exec(tactiq_rauc_t, tactiq_ubootenv_exec_t)
-allow tactiq_rauc_t tactiq_ubootenv_exec_t:lnk_file read_lnk_file_perms;
-# fw_printenv/fw_setenv acquire a lock file via /var/lock; on systemd
-# /var/lock is a symlink (lnk_file, type var_lock_t) -> /run/lock.
-gen_require(`
-    type var_lock_t;
-')
-allow tactiq_rauc_t var_lock_t:lnk_file read_lnk_file_perms;
-allow tactiq_rauc_t var_lock_t:dir rw_dir_perms;
-allow tactiq_rauc_t var_lock_t:file manage_file_perms;
-
-# --- Runtime mount tree /run/rauc ---
-manage_dirs_pattern(tactiq_rauc_t, tactiq_rauc_runtime_t, tactiq_rauc_runtime_t)
-manage_files_pattern(tactiq_rauc_t, tactiq_rauc_runtime_t, tactiq_rauc_runtime_t)
-manage_lnk_files_pattern(tactiq_rauc_t, tactiq_rauc_runtime_t, tactiq_rauc_runtime_t)
-allow tactiq_rauc_t tactiq_rauc_runtime_t:dir mounton;
-# Daemon-created entries under /run get the runtime type even without
-# restorecon; systemd labels the RuntimeDirectory itself per file_contexts.
-gen_require(`
-    type var_run_t;
-')
-filetrans_pattern(tactiq_rauc_t, var_run_t, tactiq_rauc_runtime_t, { dir file lnk_file })
-allow tactiq_rauc_t var_run_t:dir { getattr search };
-
-# --- Slot filesystem mount/unmount (bundle install path) ---
-# RAUC execs /usr/bin/mount (util-linux) rather than mount(2) directly.
-mount_exec(tactiq_rauc_t)
-mount_list_runtime(tactiq_rauc_t)
-gen_require(`
-    type fs_t, tmpfs_t;
-')
-allow tactiq_rauc_t fs_t:filesystem { getattr mount remount unmount };
-fs_getattr_tmpfs(tactiq_rauc_t)
-
-# Loop allocation for bundle mount: RAUC opens /dev/loop-control.
-gen_require(`
-    type loop_control_device_t;
-')
-allow tactiq_rauc_t loop_control_device_t:chr_file rw_chr_file_perms;
-
-# Mounted verity bundle (squashfs): dedicated type from the base-policy
-# genfscon (see 0001-squashfs-genfscon-tactiq.patch). Only this domain
-# may mount and read the bundle filesystem.
-gen_require(`
-    type tactiq_squashfs_t;
-')
-allow tactiq_rauc_t tactiq_squashfs_t:filesystem { getattr mount unmount };
-allow tactiq_rauc_t tactiq_squashfs_t:dir list_dir_perms;
-allow tactiq_rauc_t tactiq_squashfs_t:file read_file_perms;
-# --- Boot partition content (kernel, dtb, extlinux.conf) ---
-# RAUC mounts boot slot after dd to write slot.raucs.
-# Files labeled tactiq_boot_content_t at build time (setfiles).
-allow tactiq_rauc_t tactiq_boot_content_t:dir list_dir_perms;
-allow tactiq_rauc_t tactiq_boot_content_t:file read_file_perms;
-# Safety net: first flash of a pre-labeling image may still carry
-# unlabeled_t on boot partition.  Remove after one full A/B cycle
-# with labeled images.
-kernel_list_unlabeled(tactiq_rauc_t)
-# mount tries to lower kernel thread sched prio; harmless, silence it.
-gen_require(`
-    type kernel_t;
-')
-dontaudit tactiq_rauc_t kernel_t:process setsched;
-
-# --- OpenSSL init & system identity (CMS verification path) ---
-miscfiles_read_generic_certs(tactiq_rauc_t)
-files_read_etc_runtime_files(tactiq_rauc_t)
-kernel_read_kernel_sysctls(tactiq_rauc_t)
-
-# --- Network: download OTA bundles ---
-corenet_tcp_connect_http_port(tactiq_rauc_t)
-corenet_tcp_connect_http_cache_port(tactiq_rauc_t)
-sysnet_dns_name_resolve(tactiq_rauc_t)
-
-# --- Temporary files for bundle extraction ---
-files_tmp_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })
-
-# --- Syslog ---
-logging_send_syslog_msg(tactiq_rauc_t)
-
-# --- System state ---
-kernel_read_system_state(tactiq_rauc_t)
-files_read_etc_files(tactiq_rauc_t)
-miscfiles_read_localization(tactiq_rauc_t)
-dev_read_urand(tactiq_rauc_t)

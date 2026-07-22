@@ -1,0 +1,32 @@
+Subject: squashfs: add genfscon alongside fs_use_xattr
+
+squashfs is a read-only filesystem that does not support security
+xattrs.  The existing fs_use_xattr entry never matches at mount time;
+the kernel falls back to unlabeled_t for all squashfs content.
+
+Add a dedicated squashfs_t with genfscon so the kernel assigns a
+known type.  The fs_use_xattr line is retained for completeness
+(if a future squashfs implementation adds xattr support, it will
+take precedence per the kernel's fs_use > genfscon priority).
+
+Pattern follows virtiofs_t.
+
+Upstream-Status: Pending [https://github.com/SELinuxProject/refpolicy/pull/1181]
+---
+--- a/policy/modules/kernel/filesystem.te
++++ b/policy/modules/kernel/filesystem.te
+@@ -191,6 +191,15 @@
+ fs_type(spufs_t)
+ genfscon spufs / gen_context(system_u:object_r:spufs_t,s0)
+ files_mountpoint(spufs_t)
++#
++# squashfs_t is the type for squashfs file systems.
++# squashfs is read-only and does not support xattrs;
++# the fs_use_xattr entry above never matches.
++#
++type squashfs_t;
++fs_noxattr_type(squashfs_t)
++files_mountpoint(squashfs_t)
++genfscon squashfs / gen_context(system_u:object_r:squashfs_t,s0)
+ type sysv_t;
+ fs_noxattr_type(sysv_t)

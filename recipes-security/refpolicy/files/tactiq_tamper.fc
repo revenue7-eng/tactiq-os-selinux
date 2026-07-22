@@ -1,20 +1,19 @@
-# Tamper daemon binary
-/opt/tactiq/bin/tactiq-tamper		--	gen_context(system_u:object_r:tactiq_tamper_exec_t,s0)
-
 # GPIO device nodes
 /dev/gpiochip[0-9]+		-c	gen_context(system_u:object_r:tactiq_tamper_gpio_t,s0)
-
 # I2C device nodes (IMU, power monitor)
 /dev/i2c-[0-9]+			-c	gen_context(system_u:object_r:tactiq_tamper_gpio_t,s0)
 
 # Configuration (sensor thresholds, calibration)
 /etc/tactiq/tamper(/.*)?		gen_context(system_u:object_r:tactiq_tamper_conf_t,s0)
 
-# Logs (tamper event audit trail)
-/var/log/tactiq/tamper(/.*)?		gen_context(system_u:object_r:tactiq_tamper_log_t,s0)
+# Tamper daemon binary
+/opt/tactiq/bin/tactiq-tamper		--	gen_context(system_u:object_r:tactiq_tamper_exec_t,s0)
+
+# IPC socket
+/run/tactiq-tamper\.sock	-s	gen_context(system_u:object_r:tactiq_tamper_var_t,s0)
 
 # Runtime state (sensor state, calibration data)
 /var/lib/tactiq/tamper(/.*)?		gen_context(system_u:object_r:tactiq_tamper_var_t,s0)
 
-# IPC socket
-/run/tactiq-tamper\.sock	-s	gen_context(system_u:object_r:tactiq_tamper_var_t,s0)
+# Logs (tamper event audit trail)
+/var/log/tactiq/tamper(/.*)?		gen_context(system_u:object_r:tactiq_tamper_log_t,s0)
