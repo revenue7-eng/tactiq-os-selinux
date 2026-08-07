@@ -1,0 +1,196 @@
+=== capture start: 2026-08-07 12:01:54 UTC
+--- image
+ID=tactiq
+NAME="TactiQ OS"
+VERSION="2.1.0 (hardened-edge)"
+--- policy
+8c576ed822bfa88b8c745e4dc1c589dda6dfdfdcbd54e8d467184cf683f97840  /etc/selinux/targeted/policy/policy.35
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+--- modules
+tactiq_agent
+tactiq_ctl
+tactiq_fixes
+tactiq_rauc
+tactiq_tamper
+tactiq_tpm
+tactiq_vault
+tactiq_verifier
+--- bundle
+69c32ab9c3d25626fee1fc7b1b6b52a3ebd75ddcd0b8dcca725cf47aca56485b  /data/measurements/tactiq-bundle-tactiq-rock5a.raucb
+
+=== install start: 2026-08-07 12:02:39 UTC
+installing
+  0% Installing
+  0% Determining slot states
+ 10% Determining slot states done.
+ 10% Checking bundle
+ 10% Verifying signature
+ 20% Verifying signature done.
+ 20% Checking bundle done.
+ 20% Checking manifest contents
+ 30% Checking manifest contents done.
+ 30% Determining target install group
+ 40% Determining target install group done.
+ 40% Updating slots
+ 40% Checking slot rootfs.1 (B)
+ 43% Checking slot rootfs.1 (B) done.
+ 43% Copying image to rootfs.1
+ 44% Copying image to rootfs.1
+ 45% Copying image to rootfs.1
+ 46% Copying image to rootfs.1
+ 47% Copying image to rootfs.1
+ 48% Copying image to rootfs.1
+ 49% Copying image to rootfs.1
+ 50% Copying image to rootfs.1
+ 51% Copying image to rootfs.1
+ 52% Copying image to rootfs.1
+ 53% Copying image to rootfs.1
+ 54% Copying image to rootfs.1
+ 55% Copying image to rootfs.1
+ 56% Copying image to rootfs.1
+ 57% Copying image to rootfs.1
+ 58% Copying image to rootfs.1
+ 59% Copying image to rootfs.1
+ 60% Copying image to rootfs.1
+ 61% Copying image to rootfs.1
+ 62% Copying image to rootfs.1
+ 63% Copying image to rootfs.1
+ 64% Copying image to rootfs.1
+ 65% Copying image to rootfs.1
+ 66% Copying image to rootfs.1
+ 67% Copying image to rootfs.1
+ 68% Copying image to rootfs.1
+ 69% Copying image to rootfs.1
+ 70% Copying image to rootfs.1 done.
+ 70% Checking slot boot.1
+ 73% Checking slot boot.1 done.
+ 73% Copying image to boot.1
+ 74% Copying image to boot.1
+ 75% Copying image to boot.1
+ 76% Copying image to boot.1
+ 77% Copying image to boot.1
+ 78% Copying image to boot.1
+ 79% Copying image to boot.1
+ 80% Copying image to boot.1
+ 81% Copying image to boot.1
+ 82% Copying image to boot.1
+ 83% Copying image to boot.1
+ 84% Copying image to boot.1
+ 85% Copying image to boot.1
+ 86% Copying image to boot.1
+ 87% Copying image to boot.1
+ 88% Copying image to boot.1
+ 89% Copying image to boot.1
+ 90% Copying image to boot.1
+ 91% Copying image to boot.1
+ 92% Copying image to boot.1
+ 93% Copying image to boot.1
+ 94% Copying image to boot.1
+ 95% Copying image to boot.1
+ 96% Copying image to boot.1
+ 97% Copying image to boot.1
+ 98% Copying image to boot.1
+ 99% Copying image to boot.1
+ 99% Copying image to boot.1 done.
+ 99% Updating slots done.
+100% Installing done.
+idle
+Installing `/data/measurements/tactiq-bundle-tactiq-rock5a.raucb` succeeded
+install rc=0
+=== install end: 2026-08-07 12:02:55 UTC
+
+=== install-2 (bundle on tactiq_rauc_bundle_t) start: 2026-08-07 12:06:03 UTC
+-rw-r--r--    1 root     root     unconfined_u:object_r:tactiq_rauc_bundle_t:s0  78933982 Aug  7 12:05 /var/lib/tactiq/rauc/bundles/tactiq-bundle-tactiq-rock5a.raucb
+installing
+  0% Installing
+  0% Determining slot states
+ 10% Determining slot states done.
+ 10% Checking bundle
+ 10% Verifying signature
+ 20% Verifying signature done.
+ 20% Checking bundle done.
+ 20% Checking manifest contents
+ 30% Checking manifest contents done.
+ 30% Determining target install group
+ 40% Determining target install group done.
+ 40% Updating slots
+ 40% Checking slot rootfs.1 (B)
+ 43% Checking slot rootfs.1 (B) done.
+ 43% Copying image to rootfs.1
+ 44% Copying image to rootfs.1
+ 45% Copying image to rootfs.1
+ 46% Copying image to rootfs.1
+ 47% Copying image to rootfs.1
+ 48% Copying image to rootfs.1
+ 49% Copying image to rootfs.1
+ 50% Copying image to rootfs.1
+ 51% Copying image to rootfs.1
+ 52% Copying image to rootfs.1
+ 53% Copying image to rootfs.1
+ 54% Copying image to rootfs.1
+ 55% Copying image to rootfs.1
+ 56% Copying image to rootfs.1
+ 57% Copying image to rootfs.1
+ 58% Copying image to rootfs.1
+ 59% Copying image to rootfs.1
+ 60% Copying image to rootfs.1
+ 61% Copying image to rootfs.1
+ 62% Copying image to rootfs.1
+ 63% Copying image to rootfs.1
+ 64% Copying image to rootfs.1
+ 65% Copying image to rootfs.1
+ 66% Copying image to rootfs.1
+ 67% Copying image to rootfs.1
+ 68% Copying image to rootfs.1
+ 69% Copying image to rootfs.1
+ 70% Copying image to rootfs.1 done.
+ 70% Checking slot boot.1
+ 73% Checking slot boot.1 done.
+ 73% Copying image to boot.1
+ 74% Copying image to boot.1
+ 75% Copying image to boot.1
+ 76% Copying image to boot.1
+ 77% Copying image to boot.1
+ 78% Copying image to boot.1
+ 79% Copying image to boot.1
+ 80% Copying image to boot.1
+ 81% Copying image to boot.1
+ 82% Copying image to boot.1
+ 83% Copying image to boot.1
+ 84% Copying image to boot.1
+ 85% Copying image to boot.1
+ 86% Copying image to boot.1
+ 87% Copying image to boot.1
+ 88% Copying image to boot.1
+ 89% Copying image to boot.1
+ 90% Copying image to boot.1
+ 91% Copying image to boot.1
+ 92% Copying image to boot.1
+ 93% Copying image to boot.1
+ 94% Copying image to boot.1
+ 95% Copying image to boot.1
+ 96% Copying image to boot.1
+ 97% Copying image to boot.1
+ 98% Copying image to boot.1
+ 99% Copying image to boot.1
+ 99% Copying image to boot.1 done.
+ 99% Updating slots done.
+100% Installing done.
+Installing `/var/lib/tactiq/rauc/bundles/tactiq-bundle-tactiq-rock5a.raucb` succeeded
+install rc=0
+=== install-2 end: 2026-08-07 12:06:18 UTC
+
+--- denials in install-2 window
+Aug 07 12:06:03 tactiq-rock5a audit[798]: AVC avc:  denied  { getattr } for  pid=798 comm="(udev-worker)" path="/var/lib/tactiq/rauc/bundles/tactiq-bundle-tactiq-rock5a.raucb" dev="mmcblk1p2" ino=10368 scontext=system_u:system_r:udev_t:s0 tcontext=unconfined_u:object_r:tactiq_rauc_bundle_t:s0 tclass=file permissive=0
+Aug 07 12:06:03 tactiq-rock5a audit[802]: AVC avc:  denied  { getattr } for  pid=802 comm="(udev-worker)" path="/var/lib/tactiq/rauc/bundles/tactiq-bundle-tactiq-rock5a.raucb" dev="mmcblk1p2" ino=10368 scontext=system_u:system_r:udev_t:s0 tcontext=unconfined_u:object_r:tactiq_rauc_bundle_t:s0 tclass=file permissive=0
+--- end
+
+--- note
+install-1: bundle on tactiq_vault_data_t, no denials (dontaudit from f569e92 already covers that type)
+install-2: same bundle on tactiq_rauc_bundle_t, two getattr denials per install
+install rc=0 in both cases with permissive=0: denial has no effect on the install path
