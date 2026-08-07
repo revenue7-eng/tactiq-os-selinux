@@ -1,4 +1,4 @@
-policy_module(tactiq_fixes, 2.0.8)
+policy_module(tactiq_fixes, 2.0.9)
 
 ########################################
 # Fix: busybox klogd/syslogd need read+map on bin_t
@@ -104,3 +104,17 @@ allow mount_t initrc_runtime_t:dir mounton;
 
 # --- Allow mount on /data (tactiq_vault_data_t) ---
 allow mount_t tactiq_vault_data_t:dir mounton;
+
+########################################
+# Fix: init (systemd) loads IMA policy and X.509 certs.
+# systemd-259 reads /etc/ima/ima-policy at boot and writes it via
+# /sys/kernel/security/ima/policy -- kernel counts this as system:policy_load.
+# Kernel also self-loads leaf IMA signing cert (CONFIG_IMA_LOAD_X509) --
+# accounted as system:x509_certificate_load.
+########################################
+gen_require(`
+    type init_t;
+    type unlabeled_t;
+')
+allow init_t unlabeled_t:system policy_load;
+allow init_t self:system x509_certificate_load;
