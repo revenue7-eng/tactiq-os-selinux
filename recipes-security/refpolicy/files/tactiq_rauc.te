@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.8.0)
+policy_module(tactiq_rauc, 2.9.0)
 
 ########################################
 #
@@ -53,6 +53,9 @@ allow tactiq_rauc_t tactiq_boot_content_t:file read_file_perms;
 # tactiq_rauc_bundle_t
 allow tactiq_rauc_t tactiq_rauc_bundle_t:dir list_dir_perms;
 allow tactiq_rauc_t tactiq_rauc_bundle_t:file read_file_perms;
+# udev probes the loop device backing the bundle during install and
+# hits the bundle label; harmless - silence it.
+dontaudit udev_t tactiq_rauc_bundle_t:file getattr;
 
 # tactiq_rauc_conf_t
 allow tactiq_rauc_t tactiq_rauc_conf_t:dir list_dir_perms;

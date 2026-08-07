@@ -1,0 +1,89 @@
+=== capture start: 2026-08-07 14:32:33 UTC
+ID=tactiq
+NAME="TactiQ OS"
+VERSION="2.1.0 (hardened-edge)"
+8c576ed822bfa88b8c745e4dc1c589dda6dfdfdcbd54e8d467184cf683f97840  /etc/selinux/targeted/policy/policy.35
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+--- rule check (expect empty: rule not present in this policy)
+
+=== case 1: bundle on tactiq_rauc_bundle_t
+unconfined_u:object_r:tactiq_rauc_bundle_t:s0 /var/lib/tactiq/rauc/bundles/tactiq-bundle-tactiq-rock5a.raucb
+losetup: /var/lib/tactiq/rauc/bundles/tactiq-bundle-tactiq-rock5a.raucb: Warning: file does not end on a 512-byte sector boundary; the remaining end of the file will be ignored.
+/dev/loop0
+--- udevadm info
+P: /devices/virtual/block/loop0
+M: loop0
+R: 0
+J: b7:0
+U: block
+T: disk
+D: b 7:0
+N: loop0
+L: 0
+S: disk/by-diskseq/26
+Q: 26
+E: DEVPATH=/devices/virtual/block/loop0
+E: DEVNAME=/dev/loop0
+E: DEVTYPE=disk
+E: DISKSEQ=26
+E: MAJOR=7
+E: MINOR=0
+E: SUBSYSTEM=block
+E: USEC_INITIALIZED=3575893
+E: ID_BLOCK_SUBSYSTEM=loop
+E: ID_FS_VERSION=4.0
+E: ID_FS_BLOCKSIZE=131072
+E: ID_FS_SIZE=78301956
+E: ID_FS_TYPE=squashfs
+E: ID_FS_USAGE=filesystem
+E: DEVLINKS=/dev/disk/by-diskseq/26
+E: TAGS=:systemd:
+E: CURRENT_TAGS=:systemd:
+
+--- by-* symlinks
+lrwxrwxrwx    1 root     root            11 Aug  7 14:33 26 -> ../../loop0
+(none if empty)
+--- denials since case 1
+Aug 07 14:33:03 tactiq-rock5a audit[470]: AVC avc:  denied  { getattr } for  pid=470 comm="(udev-worker)" path="/var/lib/tactiq/rauc/bundles/tactiq-bundle-tactiq-rock5a.raucb" dev="mmcblk1p2" ino=10368 scontext=system_u:system_r:udev_t:s0 tcontext=unconfined_u:object_r:tactiq_rauc_bundle_t:s0 tclass=file permissive=0
+Aug 07 14:33:03 tactiq-rock5a audit[470]: AVC avc:  denied  { getattr } for  pid=470 comm="(udev-worker)" path="/var/lib/tactiq/rauc/bundles/tactiq-bundle-tactiq-rock5a.raucb" dev="mmcblk1p2" ino=10368 scontext=system_u:system_r:udev_t:s0 tcontext=unconfined_u:object_r:tactiq_rauc_bundle_t:s0 tclass=file permissive=0
+
+--- detach
+=== case 2: same bundle staged on /data (tactiq_vault_data_t)
+system_u:object_r:tactiq_vault_data_t:s0 /data/measurements/tactiq-bundle-tactiq-rock5a.raucb
+losetup: /data/measurements/tactiq-bundle-tactiq-rock5a.raucb: Warning: file does not end on a 512-byte sector boundary; the remaining end of the file will be ignored.
+/dev/loop0
+--- udevadm info (case 2)
+E: ID_BLOCK_SUBSYSTEM=loop
+E: ID_FS_VERSION=4.0
+E: ID_FS_BLOCKSIZE=131072
+E: ID_FS_SIZE=78301956
+E: ID_FS_TYPE=squashfs
+E: ID_FS_USAGE=filesystem
+E: DEVLINKS=/dev/disk/by-diskseq/28
+
+=== case 3: 8MB head of bundle on etc_t (udev has getattr)
+unconfined_u:object_r:etc_t:s0   /etc/loop-probe-test.bin
+/dev/loop0
+--- udevadm info (case 3)
+E: ID_BLOCK_SUBSYSTEM=loop
+E: ID_FS_VERSION=4.0
+E: ID_FS_BLOCKSIZE=131072
+E: ID_FS_SIZE=78301956
+E: ID_FS_TYPE=squashfs
+E: ID_FS_USAGE=filesystem
+E: ID_LOOP_BACKING_DEVICE=179:2
+E: ID_LOOP_BACKING_INODE=10374
+E: ID_LOOP_BACKING_FILENAME=/etc/loop-probe-test.bin
+E: ID_LOOP_BACKING_FILENAME_ENC=\x2fetc\x2floop-probe-test.bin
+E: DEVLINKS=/dev/disk/by-loop-ref/\x2fetc\x2floop-probe-test.bin /dev/disk/by-loop-inode/179:2-10374 /dev/disk/by-diskseq/30
+--- denials in case 3 window
+(none if empty)
+--- note: case 3 shows ID_LOOP_BACKING_* and by-loop-ref/by-loop-inode symlinks, absent in cases 1 and 2
+--- cleanup
+(no loops if empty)
+=== capture end: 2026-08-07 14:40:44 UTC
