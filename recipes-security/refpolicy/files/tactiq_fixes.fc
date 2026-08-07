@@ -1,1 +1,3 @@
 # No file contexts - this module only adds allow rules
+# /etc/ima -- IMA policy directory, needs a label so init_t can read it
+/etc/ima(/.*)?    gen_context(system_u:object_r:etc_t,s0)
