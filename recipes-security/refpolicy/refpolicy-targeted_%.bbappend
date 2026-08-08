@@ -28,6 +28,7 @@ SRC_URI += " \
     file://tactiq_rauc.fc \
     file://tactiq_rauc.if \
     file://0001-squashfs-genfscon-tactiq.patch \
+    file://0001-corenetwork-declare-agentgateway-port.patch \
     file://agentgateway.te \
     file://agentgateway.fc \
     file://agentgateway.if \

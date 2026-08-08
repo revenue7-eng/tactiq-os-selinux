@@ -3,11 +3,17 @@
 ########################################
 ## <summary>
 ##   Allow a domain to connect to agentgateway over TCP loopback
-##   (MCP listener, port 49190).
+##   (MCP listener, port 49317).
 ## </summary>
 ## <param name="domain">
 ##   <summary>Domain to grant access.</summary>
 ## </param>
+#
+# Note: since agentgateway_port_t is declared by network_port() in
+# corenetwork.te.in, corenet_tcp_connect_agentgateway_port() is generated
+# there and does the same thing. This wrapper is kept so callers do not
+# have to change; prefer the corenet_ form in new policy.
+#
 interface(`agentgateway_tcp_connect',`
     gen_require(`
         type agentgateway_port_t;
