@@ -1,0 +1,5 @@
+/opt/tactiq/bin/agentgateway       --      gen_context(system_u:object_r:agentgateway_exec_t,s0)
+
+/etc/tactiq/agentgateway(/.*)?              gen_context(system_u:object_r:agentgateway_conf_t,s0)
+
+/var/log/agentgateway(/.*)?                 gen_context(system_u:object_r:agentgateway_log_t,s0)

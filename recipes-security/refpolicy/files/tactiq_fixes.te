@@ -63,10 +63,29 @@ gen_require(`
     type init_t;
     type tactiq_vault_data_t;
     type tactiq_tpm_device_t;
+    type unlabeled_t;
 ')
 allow init_t tactiq_vault_data_t:dir { getattr search read open };
 allow init_t tactiq_vault_data_t:file { getattr read open };
 allow init_t tactiq_tpm_device_t:chr_file relabelto;
+
+# restorecon /data: init_t (oneshot vault-relabel) метит пустой раздел в vault-тип
+allow init_t unlabeled_t:dir { relabelfrom getattr search read open };
+allow init_t unlabeled_t:file { relabelfrom getattr read open };
+allow init_t tactiq_vault_data_t:dir { relabelto getattr search read open };
+allow init_t tactiq_vault_data_t:file { relabelto getattr read open };
+
+# restorecon /data РЕАЛЬНО бежит в initrc_t (ExecStart=/bin/sh), не init_t.
+# Артефакт: _dbg.log id → context=initrc_t, restorecon_rc=255 без этих правил.
+gen_require(`
+    type initrc_t;
+    type unlabeled_t;
+    type tactiq_vault_data_t;
+')
+allow initrc_t unlabeled_t:dir { relabelfrom getattr search read open };
+allow initrc_t unlabeled_t:file { relabelfrom getattr read open };
+allow initrc_t tactiq_vault_data_t:dir { relabelto getattr search read open };
+allow initrc_t tactiq_vault_data_t:file { relabelto getattr read open };
 
 ########################################
 # Fix: TPM device file association on devtmpfs

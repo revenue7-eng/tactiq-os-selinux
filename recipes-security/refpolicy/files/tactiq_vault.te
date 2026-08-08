@@ -10,6 +10,7 @@ type tactiq_vault_conf_t;
 type tactiq_vault_log_t;
 type tactiq_vault_var_t;
 type tactiq_vault_data_t;
+files_type(tactiq_vault_data_t)
 
 # tactiq_vault_data_t is assigned by relabel (restorecon / setfiles) and by
 # fs-wide context= mount of /data. Both require the file_type attribute;

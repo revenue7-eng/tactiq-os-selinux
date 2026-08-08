@@ -1,0 +1,40 @@
+From: TactiQ OS <andrey@tactiq.ai>
+Date: Sat, 8 Aug 2026 00:00:00 +0000
+Subject: [PATCH] corenetwork: declare agentgateway_port_t on TCP 49317
+
+The agentgateway module needs a port type bound to a concrete number so
+the in-perimeter MCP listener can bind and nothing else can. Operators
+that bind a number to a type (portcon) are rejected by checkmodule in a
+loadable module, so the declaration has to live in the base policy.
+
+network_port() declares agentgateway_port_t and generates the matching
+corenet_tcp_bind_agentgateway_port() / corenet_tcp_connect_agentgateway_port()
+interfaces; the agentgateway module consumes the bind form and
+deliberately does not consume the connect form.
+
+49317 is in the IANA dynamic range and collides with nothing already
+declared in this file. Note that 49190 -- the number carried by earlier
+revisions of the agentgateway recipe and its config -- falls inside the
+virt_migration range (49152-49216) and would have been labelled
+virt_migration_port_t, denying the bind.
+
+Placed between afs3_callback and agentx to keep the block alphabetical.
+
+Upstream-Status: Inappropriate [TactiQ OS specific service]
+
+Signed-off-by: TactiQ OS <andrey@tactiq.ai>
+---
+ policy/modules/kernel/corenetwork.te.in | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/policy/modules/kernel/corenetwork.te.in b/policy/modules/kernel/corenetwork.te.in
+--- a/policy/modules/kernel/corenetwork.te.in
++++ b/policy/modules/kernel/corenetwork.te.in
+@@ -92,6 +92,7 @@
+ network_port(afs_pt, udp,7002,s0)
+ network_port(afs_vl, udp,7003,s0)
+ network_port(afs3_callback, tcp,7001,s0, udp,7001,s0)
++network_port(agentgateway, tcp,49317,s0)
+ network_port(agentx, udp,705,s0, tcp,705,s0)
+ network_port(amanda, udp,10080-10082,s0, tcp,10080-10083,s0)
+ network_port(amavisd_recv, tcp,10024,s0)

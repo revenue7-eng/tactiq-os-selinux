@@ -1,0 +1,40 @@
+## <summary>TactiQ Edge inference daemon policy interfaces</summary>
+
+########################################
+## <summary>
+##   Allow a domain to connect to the tactiq-edge-daemon inference
+##   socket (AF_UNIX SOCK_STREAM at /run/tactiq/edge.sock).
+##   This is the sanctioned client entry point: the Phase 3 camera
+##   client in production, and the measurement probe during bring-up
+##   both use THIS interface. Measurability is a first-class property
+##   of the domain, not a bolted-on exception.
+## </summary>
+## <param name="domain">
+##   <summary>Domain permitted to connect.</summary>
+## </param>
+interface(`tactiq_edge_daemon_connect',`
+    gen_require(`
+        type tactiq_edge_daemon_t;
+        type tactiq_edge_runtime_t;
+    ')
+    # Reach the socket node...
+    allow $1 tactiq_edge_runtime_t:dir search_dir_perms;
+    allow $1 tactiq_edge_runtime_t:sock_file { getattr write };
+    # ...and connect to the server socket held by the daemon.
+    allow $1 tactiq_edge_daemon_t:unix_stream_socket connectto;
+')
+
+########################################
+## <summary>
+##   Allow a domain to read the tactiq-edge model + fixtures.
+## </summary>
+## <param name="domain">
+##   <summary>Domain to grant read access.</summary>
+## </param>
+interface(`tactiq_edge_read_model',`
+    gen_require(`
+        type tactiq_edge_model_t;
+    ')
+    allow $1 tactiq_edge_model_t:dir list_dir_perms;
+    allow $1 tactiq_edge_model_t:file read_file_perms;
+')

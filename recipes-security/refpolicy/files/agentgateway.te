@@ -1,0 +1,78 @@
+policy_module(agentgateway, 1.1.0)
+
+########################################
+# Type declarations
+########################################
+type agentgateway_t;
+type agentgateway_exec_t;
+type agentgateway_conf_t;
+type agentgateway_log_t;
+
+# Transition: systemd starts binary -> runs as agentgateway_t
+init_daemon_domain(agentgateway_t, agentgateway_exec_t)
+
+# agentgateway_port_t is NOT declared here. Operators that bind a port
+# number to a type (portcon) are only accepted in the base policy, not in
+# a loadable module -- confirmed with checkmodule 3.5-1, which rejects
+# portcon at the parser. The type and its number are therefore declared by
+# network_port() in kernel/corenetwork.te.in, patched in this layer, which
+# also generates the corenet_*_agentgateway_port() interfaces used below.
+#
+# The listener uses TCP 49317. The number is fixed and documented because
+# three layers depend on it (this policy, the systemd unit, the firewall
+# rule). 49317 sits in the IANA dynamic range and does not collide with
+# anything already declared in corenetwork.te.in -- note that the earlier
+# choice of 49190 fell inside the virt_migration range (49152-49216) and
+# would have been bound to virt_migration_port_t, denying the bind.
+
+########################################
+# Permissions
+########################################
+
+# --- Self ---
+allow agentgateway_t self:process { signal_perms setrlimit getsched };
+allow agentgateway_t self:fifo_file rw_fifo_file_perms;
+allow agentgateway_t self:unix_stream_socket create_stream_socket_perms;
+# create_stream_socket_perms already covers create+bind+listen+accept and,
+# via rw_socket_perms, the socket-level connect permission. Egress is not
+# closed here: it is closed by the absence of name_connect on any port type
+# (see the block below).
+allow agentgateway_t self:tcp_socket create_stream_socket_perms;
+
+# --- Network: LISTEN on 49317 only ---
+corenet_tcp_bind_agentgateway_port(agentgateway_t)
+corenet_tcp_bind_generic_node(agentgateway_t)
+#
+# Deliberately ABSENT (egress denied by default-deny):
+#   corenet_tcp_connect_generic_port  -- no outbound connect
+#   sysnet_dns_name_resolve           -- no DNS
+#   http_port_t name_connect          -- no http backends
+# v1 perimeter is empty (backends: []). stdio backends, when added,
+# will require domain_auto_transition on the MCP subprocess exec --
+# added at that time, not pre-provisioned here.
+
+# --- Configuration (read-only) ---
+allow agentgateway_t agentgateway_conf_t:dir list_dir_perms;
+allow agentgateway_t agentgateway_conf_t:file read_file_perms;
+
+# --- Logs (append-only) ---
+# The rules below assume the directory exists. Under ProtectSystem=strict
+# the unit cannot create it in /var/log itself, so agentgateway.service
+# must carry LogsDirectory=agentgateway. That unit lives in the tactiq-os
+# tree and does not carry it yet -- until it does, the log path is
+# unreachable at runtime and only the syslog route works.
+allow agentgateway_t agentgateway_log_t:dir { search add_name };
+allow agentgateway_t agentgateway_log_t:file { create open append getattr };
+logging_log_filetrans(agentgateway_t, agentgateway_log_t, file)
+
+# --- Syslog ---
+logging_send_syslog_msg(agentgateway_t)
+
+# --- Minimal system reads ---
+files_read_etc_files(agentgateway_t)
+miscfiles_read_localization(agentgateway_t)
+
+# --- Deny everything else ---
+# Implicit: all other access is denied by SELinux default-deny.
+# No TPM (.service: PrivateDevices), no certs (plaintext loopback),
+# no vault/data dirs, no runtime state dir in v1 (stateless empty perimeter).

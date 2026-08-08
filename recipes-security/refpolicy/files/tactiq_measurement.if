@@ -1,0 +1,18 @@
+## <summary>TactiQ dev-only measurement channel interfaces</summary>
+
+########################################
+## <summary>
+##   Read measurement results (latency/accuracy artifacts).
+## </summary>
+## <param name="domain">
+##   <summary>Domain to grant read access.</summary>
+## </param>
+#
+interface(`tactiq_measurement_read_results',`
+    gen_require(`
+        type tactiq_measurement_data_t;
+    ')
+
+    allow $1 tactiq_measurement_data_t:dir list_dir_perms;
+    allow $1 tactiq_measurement_data_t:file read_file_perms;
+')
