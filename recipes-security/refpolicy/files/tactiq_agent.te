@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.0.6)
+policy_module(tactiq_agent, 2.1.0)
 
 ########################################
 # Type declarations
@@ -12,6 +12,13 @@ type tactiq_agent_var_t;
 type tactiq_agent_tmp_t;
 type tactiq_agent_cert_t;
 
+# Scratch directory created by systemd's RuntimeDirectory=. ProtectSystem=strict
+# makes the whole hierarchy read-only, /run included, so the agent has nowhere
+# else to put the transient output of TPM reads. Only counter and PCR reads land
+# here; key material never does.
+type tactiq_agent_runtime_t;
+files_runtime_file(tactiq_agent_runtime_t)
+
 # Transition: systemd starts binary -> runs as tactiq_agent_t
 init_daemon_domain(tactiq_agent_t, tactiq_agent_exec_t)
 
@@ -24,6 +31,23 @@ allow tactiq_agent_t self:process { signal_perms setrlimit getsched setsched };
 allow tactiq_agent_t self:fifo_file rw_fifo_file_perms;
 allow tactiq_agent_t self:unix_stream_socket create_stream_socket_perms;
 allow tactiq_agent_t self:tcp_socket create_stream_socket_perms;
+
+# sd_notify is a single datagram to systemd's notification socket. The unit runs
+# Type=notify with WatchdogSec, so without this the agent cannot report READY
+# and systemd kills it as hung after the first watchdog interval.
+allow tactiq_agent_t self:unix_dgram_socket create_socket_perms;
+init_dgram_send(tactiq_agent_t)
+
+# --- Subprocess execution: tpm2-tools ---
+# The agent reaches the TPM by executing tpm2-tools rather than linking
+# libtss2 directly (see crates/prover/src/tpm.rs in tactiq-attest). exec_bin
+# grants execute_no_trans, so the tools run *inside* this domain: they inherit
+# the agent's confinement instead of transitioning to something broader. When
+# that module is ported to tss-esapi these three lines are what goes away.
+corecmd_exec_bin(tactiq_agent_t)
+libs_use_ld_so(tactiq_agent_t)
+libs_use_shared_libs(tactiq_agent_t)
+files_read_usr_files(tactiq_agent_t)
 
 # --- Configuration (read-only) ---
 allow tactiq_agent_t tactiq_agent_conf_t:dir list_dir_perms;
@@ -39,6 +63,15 @@ allow tactiq_agent_t tactiq_agent_var_t:dir manage_dir_perms;
 allow tactiq_agent_t tactiq_agent_var_t:file manage_file_perms;
 files_var_lib_filetrans(tactiq_agent_t, tactiq_agent_var_t, { dir file })
 
+# --- Scratch directory (/run/tactiq-agent) ---
+# Both the agent and the tpm2-tools it execs write here: tpm2_nvread and
+# tpm2_pcrread take an output path, and the canonical message is assembled from
+# what they leave behind.
+allow tactiq_agent_t tactiq_agent_runtime_t:dir manage_dir_perms;
+allow tactiq_agent_t tactiq_agent_runtime_t:file manage_file_perms;
+files_runtime_filetrans(tactiq_agent_t, tactiq_agent_runtime_t, { dir file })
+files_search_runtime(tactiq_agent_t)
+
 # --- Temp files ---
 allow tactiq_agent_t tactiq_agent_tmp_t:file manage_file_perms;
 files_tmp_filetrans(tactiq_agent_t, tactiq_agent_tmp_t, file)
@@ -50,9 +83,19 @@ allow tactiq_agent_t tactiq_agent_cert_t:file read_file_perms;
 # --- TPM access (via /dev/tpm0 and /dev/tpmrm0) ---
 tactiq_tpm_access(tactiq_agent_t)
 
+# --- Entropy ---
+# The attestation key is generated inside the TPM, but the tooling around it
+# (OpenSSL inside tpm2-tools) seeds from urandom on startup.
+dev_read_urand(tactiq_agent_t)
+
 # --- Network: outbound to http_port_t only (verifier mTLS on 8443 is within
 # http_port_t); a dedicated tactiq_verifier_port_t is deferred until the
 # verifier daemon exists ---
+#
+# NOTE: the agent does not open a socket in the current phase — it writes
+# envelopes to /data and the unit sets IPAddressDeny=any. These rules are kept
+# for the phase where the agent delivers to a verifier directly, and should be
+# revisited then rather than left to accumulate.
 corenet_tcp_connect_http_port(tactiq_agent_t)
 sysnet_dns_name_resolve(tactiq_agent_t)
 
@@ -66,6 +109,9 @@ kernel_read_system_state(tactiq_agent_t)
 dev_read_sysfs(tactiq_agent_t)
 
 # --- Data directory (/data/tactiq) ---
+# keys/ holds the device id and the attestation public key. They are
+# provisioned as one pair and the agent refuses to run on a partial state, so
+# both are written here in one operation and neither is regenerated alone.
 gen_require(`
     type tactiq_vault_data_t;
 ')
@@ -83,5 +129,3 @@ allow tactiq_agent_t user_tmpfs_t:file { create read write open getattr setattr 
 
 # --- Deny everything else ---
 # Implicit: all other access is denied by SELinux default-deny
-
-

@@ -3,7 +3,10 @@
 
 /opt/tactiq/bin/tactiq-agent		--	gen_context(system_u:object_r:tactiq_agent_exec_t,s0)
 
-/run/tactiq-agent\.sock			--	gen_context(system_u:object_r:tactiq_agent_var_t,s0)
+# Created by systemd's RuntimeDirectory=tactiq-agent. The agent and the
+# tpm2-tools it execs write transient TPM output here; the earlier entry
+# labelled a control socket that the agent no longer opens.
+/run/tactiq-agent(/.*)?			gen_context(system_u:object_r:tactiq_agent_runtime_t,s0)
 
 /var/lib/tactiq/agent(/.*)?		gen_context(system_u:object_r:tactiq_agent_var_t,s0)
 
