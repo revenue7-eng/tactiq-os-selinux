@@ -16,6 +16,9 @@
 /usr/sbin/fw_printenv			gen_context(system_u:object_r:tactiq_ubootenv_exec_t,s0)
 /usr/sbin/fw_setenv			gen_context(system_u:object_r:tactiq_ubootenv_exec_t,s0)
 
+# Generated bootloader environment config (RuntimeDirectory=tactiq-ubootenv)
+/run/tactiq-ubootenv(/.*)?		gen_context(system_u:object_r:tactiq_ubootenv_runtime_t,s0)
+
 # Runtime state (slot status, boot counter)
 /var/lib/tactiq/rauc(/.*)?		gen_context(system_u:object_r:tactiq_rauc_var_t,s0)
 # Bundle staging area (subdirectory of rauc var)

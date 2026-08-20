@@ -33,6 +33,12 @@ files_type(tactiq_rauc_var_t)
 type tactiq_ubootenv_exec_t;
 application_executable_file(tactiq_ubootenv_exec_t)
 
+# Runtime directory holding the generated fw_env.config. Own namespace:
+# /run/tactiq belongs to the edge daemon, and a config the updater must
+# read does not belong inside another component's runtime directory.
+type tactiq_ubootenv_runtime_t;
+files_runtime_file(tactiq_ubootenv_runtime_t)
+
 ########################################
 #
 # Local policy — tactiq_rauc_t
@@ -86,10 +92,15 @@ files_var_lib_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })
 can_exec(tactiq_rauc_t, tactiq_ubootenv_exec_t)
 allow tactiq_rauc_t tactiq_ubootenv_exec_t:lnk_file read_lnk_file_perms;
 
+# tactiq_ubootenv_runtime_t — /run/tactiq-ubootenv/fw_env.config
+allow tactiq_rauc_t tactiq_ubootenv_runtime_t:dir search_dir_perms;
+allow tactiq_rauc_t tactiq_ubootenv_runtime_t:file read_file_perms;
+
 # --- Rules on objects from other modules, sorted alphabetically ---
 
 gen_require(`
     type fs_t;
+    type init_t;
     type kernel_t;
     type loop_control_device_t;
     type root_t;
@@ -111,6 +122,11 @@ dontaudit tactiq_rauc_t kernel_t:process setsched;
 allow tactiq_rauc_t loop_control_device_t:chr_file rw_chr_file_perms;
 
 # root_t — slot.raucs type_transition and transitional access
+# init_t creates the runtime dir (RuntimeDirectory=) and writes the config
+# there; tactiq-fw-env-setup has no exec type, so it runs as init_t.
+allow init_t tactiq_ubootenv_runtime_t:dir manage_dir_perms;
+allow init_t tactiq_ubootenv_runtime_t:file manage_file_perms;
+
 type_transition tactiq_rauc_t root_t:file tactiq_rauc_status_t;
 allow tactiq_rauc_t root_t:dir { search write add_name remove_name };
 # Transitional: existing slot.raucs retains root_t until the first
