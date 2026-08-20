@@ -1,0 +1,2 @@
+# IMA custom policy
+/etc/ima(/.*)?		gen_context(system_u:object_r:tactiq_ima_policy_t,s0)
