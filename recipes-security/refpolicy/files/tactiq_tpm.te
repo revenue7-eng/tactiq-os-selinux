@@ -1,4 +1,4 @@
-policy_module(tactiq_tpm, 2.0.0)
+policy_module(tactiq_tpm, 2.0.1)
 
 ########################################
 # Type declarations
@@ -12,6 +12,13 @@ type tactiq_tpm_var_t;
 
 # TPM device types
 type tactiq_tpm_device_t;
+
+# device_node attribute: lets systemd/udev relabel /dev/tpm0 and /dev/tpmrm0
+# to this type at boot through the standard device interfaces -- the same
+# pattern tactiq_tamper.te uses for its GPIO node. Without it the boot-time
+# relabel has to be hand-granted in tactiq_fixes as explicit init_t/udev_t
+# relabelto, which is broader than necessary.
+dev_node(tactiq_tpm_device_t)
 
 # Transition: systemd starts tpm helper → runs as tactiq_tpm_t
 init_daemon_domain(tactiq_tpm_t, tactiq_tpm_exec_t)

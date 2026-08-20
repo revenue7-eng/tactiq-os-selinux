@@ -1,4 +1,4 @@
-policy_module(tactiq_fixes, 2.0.8)
+policy_module(tactiq_fixes, 2.0.9)
 
 ########################################
 # Fix: busybox klogd/syslogd need read+map on bin_t
@@ -67,6 +67,12 @@ gen_require(`
 ')
 allow init_t tactiq_vault_data_t:dir { getattr search read open };
 allow init_t tactiq_vault_data_t:file { getattr read open };
+# SUPERSEDED by dev_node(tactiq_tpm_device_t) in tactiq_tpm.te (v2.0.1).
+# Kept until an enforcing boot on a board with a physical TPM shows
+# /dev/tpm0 present and labeled tactiq_tpm_device_t with no related
+# denials. "Zero denials" alone is not evidence: with no TPM fitted the
+# device node never appears and nothing touches the path.
+# Then delete (Tier 2 cleanup, see CHANGES-selinux-hardening.md).
 allow init_t tactiq_tpm_device_t:chr_file relabelto;
 
 # restorecon /data: init_t (oneshot vault-relabel) метит пустой раздел в vault-тип
@@ -123,3 +129,44 @@ allow mount_t initrc_runtime_t:dir mounton;
 
 # --- Allow mount on /data (tactiq_vault_data_t) ---
 allow mount_t tactiq_vault_data_t:dir mounton;
+
+
+########################################
+# Hardening invariants (neverallow assertions)
+#
+# These grant nothing. They are assertions checked when the policy is built:
+# if a future edit (here or upstream) ever introduces an allow that violates
+# one, the policy build FAILS LOUD rather than shipping a weakened production
+# policy. Every listed domain already satisfies them, so this is a runtime
+# no-op today.
+#
+# Types referenced are only those actually built per TACTIQ_MODULES in
+# refpolicy-targeted_%.bbappend. The upstream-style rauc_t is NOT built
+# (only tactiq_rauc_t ships), so it must not be referenced here.
+########################################
+gen_require(`
+    type tactiq_agent_t;
+    type tactiq_tpm_t;
+    type tactiq_vault_t;
+    type tactiq_tamper_t;
+    type tactiq_rauc_t;
+')
+
+# 1. W^X for the attestation-integrity domains. The agent (Ed25519/TPM), the
+#    TPM helper, and the vault must never map writable+executable memory --
+#    no JIT, no injected code in a domain that touches keys or the attestation
+#    quote. Static Go binaries do not need execmem, and the KERNEL_HARDENING
+#    posture only tightens execution over time.
+neverallow { tactiq_agent_t tactiq_tpm_t tactiq_vault_t } self:process { execmem execstack execheap };
+
+# 2. No kernel-module loading from any TactiQ domain. Prevents a confined
+#    domain from becoming a module-load primitive (a classic MAC-escape path).
+neverallow { tactiq_agent_t tactiq_tpm_t tactiq_vault_t tactiq_tamper_t tactiq_rauc_t } self:capability sys_module;
+
+# NOTE: a third assertion forbidding tactiq_rauc_t from executing bin_t was
+# considered and deliberately NOT added. RAUC bundle-hook execution is an
+# active, upstream-coordinated design area (see
+# measurements/selinux-rauc-hook-exec-20260806.md and the bundle-mount-context
+# discussion): the updater's execute surface is intentionally being opened
+# (tactiq_squashfs_t + shell_exec_t today). Welding bin_t execution shut now
+# would pre-constrain that design. Revisit once hook-exec settles upstream.
