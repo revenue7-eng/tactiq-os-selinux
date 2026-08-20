@@ -1,0 +1,40 @@
+policy_module(tactiq_ima, 1.0.0)
+
+########################################
+#
+# Declarations
+#
+
+# IMA custom policy (/etc/ima/ima-policy), loaded by systemd (init_t)
+# at early boot through the kernel_read_file hook. The kernel checks
+# the load as class system { policy_load } against the *file* label,
+# so the file gets a dedicated type: granting policy_load on etc_t
+# would let init load any /etc file as IMA policy.
+type tactiq_ima_policy_t;
+files_config_file(tactiq_ima_policy_t)
+
+########################################
+#
+# Local policy
+#
+
+gen_require(`
+    type init_t;
+    class system policy_load;
+')
+
+allow init_t tactiq_ima_policy_t:dir list_dir_perms;
+allow init_t tactiq_ima_policy_t:file read_file_perms;
+allow init_t tactiq_ima_policy_t:system policy_load;
+
+# IMA signature verification: the appraisal hook searches the .ima
+# keyring in the credentials of the *appraised* task, while the key
+# itself is kernel-owned (kernel_t). Refpolicy dontaudits this exact
+# access (dontaudit domain kernel_t:key), which silently breaks
+# appraisal under enforcing: every keyring lookup fails with EACCES
+# and the kernel reports "Request for unknown key". Grant search only.
+gen_require(`
+    type kernel_t;
+    attribute domain;
+')
+allow domain kernel_t:key search;
