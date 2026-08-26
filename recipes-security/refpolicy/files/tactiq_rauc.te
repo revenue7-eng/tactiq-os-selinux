@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.8.0)
+policy_module(tactiq_rauc, 2.9.0)
 
 ########################################
 #
