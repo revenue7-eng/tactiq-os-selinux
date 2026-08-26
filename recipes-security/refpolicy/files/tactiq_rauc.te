@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.8.0)
+policy_module(tactiq_rauc, 2.10.0)
 
 ########################################
 #
@@ -59,6 +59,20 @@ allow tactiq_rauc_t tactiq_boot_content_t:file read_file_perms;
 # tactiq_rauc_bundle_t
 allow tactiq_rauc_t tactiq_rauc_bundle_t:dir list_dir_perms;
 allow tactiq_rauc_t tactiq_rauc_bundle_t:file read_file_perms;
+# udev probes the loop device backing the bundle during install and
+# hits the bundle label; harmless - silence it.
+#
+# Access stays denied here; only the audit record is suppressed.
+# Upstream refpolicy made the opposite call for its own type: commit
+# 9417c19a1 added rauc_getattr_bundle_files(udev_t) at udev.te:374,
+# which expands to allow $1 rauc_bundle_t:file getattr_file_perms
+# (rauc.if:53-59). There is no overlap today: that rule names
+# rauc_bundle_t, this one names tactiq_rauc_bundle_t. If this module
+# ever moves onto the upstream type, the stated property inverts from
+# denied to allowed, and the width changes too: getattr_file_perms is
+# a set, this rule covers getattr only. Re-decide at that point
+# instead of carrying this wording over.
+dontaudit udev_t tactiq_rauc_bundle_t:file getattr;
 
 # tactiq_rauc_conf_t
 allow tactiq_rauc_t tactiq_rauc_conf_t:dir list_dir_perms;
