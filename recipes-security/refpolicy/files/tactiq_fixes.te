@@ -151,12 +151,13 @@ gen_require(`
     type tactiq_tamper_t;
     type tactiq_rauc_t;
 ')
-
-# 1. W^X for the attestation-integrity domains. The agent (Ed25519/TPM), the
-#    TPM helper, and the vault must never map writable+executable memory --
-#    no JIT, no injected code in a domain that touches keys or the attestation
-#    quote. Static Go binaries do not need execmem, and the KERNEL_HARDENING
-#    posture only tightens execution over time.
+# 1. W^X for the attestation-integrity domains. The agent (ECDSA P-256 inside
+#    the TPM), the TPM helper, and the vault must never map writable+executable
+#    memory -- no JIT, no injected code in a domain that touches keys or the
+#    attestation quote. The requirement is on the domain, not on what its
+#    runtime happens to need: an attestation domain must have no W^X primitive
+#    even if a future runtime would tolerate one. The agent is Rust with no JIT
+#    today.
 neverallow { tactiq_agent_t tactiq_tpm_t tactiq_vault_t } self:process { execmem execstack execheap };
 
 # 2. No kernel-module loading from any TactiQ domain. Prevents a confined
