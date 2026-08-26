@@ -1,6 +1,5 @@
 # udev getattr on RAUC Bundle Files — 2026-08-07
 
-DRAFT. Author to review wording before commit.
 
 Every RAUC install produced two AVC denials from udev workers touching the
 bundle file. Commit `f569e92` had already silenced the same access for
