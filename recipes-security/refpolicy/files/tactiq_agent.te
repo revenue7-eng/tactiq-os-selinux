@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.1.0)
+policy_module(tactiq_agent, 2.2.0)
 
 ########################################
 # Type declarations
@@ -84,6 +84,31 @@ files_tmp_filetrans(tactiq_agent_t, tactiq_agent_tmp_t, file)
 # --- Certificates (read-only) ---
 allow tactiq_agent_t tactiq_agent_cert_t:dir list_dir_perms;
 allow tactiq_agent_t tactiq_agent_cert_t:file read_file_perms;
+
+# OpenSSL inside tpm2-tools probes the default certificate store on
+# startup and hits /etc/ssl before any TPM work begins. Nothing in the
+# signing path needs it: the private key never leaves the TPM, the
+# signature is produced by tpm2_sign, and no chain is verified on the
+# device.
+#
+# Access stays denied here; only the audit record is suppressed.
+# Measured on hardware: with the access denied, envelope 10 verifies
+# against /data/tactiq/keys/pubkey.pem (openssl dgst -verify -> OK),
+# /etc/ssl/openssl.cnf.d is empty, and provider_sect activates only
+# default_sect - the same provider OpenSSL falls back to when the
+# config is unreachable. Sixteen denials per agent run across
+# tpm2_nvincrement, tpm2_nvread and tpm2_sign, permissive=0.
+#
+# Narrower than miscfiles_dontaudit_read_generic_certs(), which also
+# covers file and lnk_file read: only dir search is observed, so only
+# dir search is silenced. If the agent ever needs a real trust store -
+# a verifier over mTLS, for instance - this rule must be revisited
+# rather than widened, because at that point the access stops being
+# spurious.
+gen_require(`
+	type cert_t;
+')
+dontaudit tactiq_agent_t cert_t:dir search;
 
 # --- TPM access (via /dev/tpm0 and /dev/tpmrm0) ---
 tactiq_tpm_access(tactiq_agent_t)
