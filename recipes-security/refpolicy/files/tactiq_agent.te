@@ -44,6 +44,11 @@ init_dgram_send(tactiq_agent_t)
 # grants execute_no_trans, so the tools run *inside* this domain: they inherit
 # the agent's confinement instead of transitioning to something broader. When
 # that module is ported to tss-esapi these three lines are what goes away.
+# corecmd_exec_bin covers bin_t only. refpolicy's tpm2 module labels
+# /usr/bin/tpm2_* as tpm2_exec_t, so execution of the tools needs its own
+# grant; tpm2_exec() runs them in the caller domain, which is the confinement
+# this module intends.
+tpm2_exec(tactiq_agent_t)
 corecmd_exec_bin(tactiq_agent_t)
 libs_use_ld_so(tactiq_agent_t)
 libs_use_shared_libs(tactiq_agent_t)
