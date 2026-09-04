@@ -11,3 +11,9 @@
 /var/lib/tactiq/agent(/.*)?		gen_context(system_u:object_r:tactiq_agent_var_t,s0)
 
 /var/log/tactiq/agent(/.*)?		gen_context(system_u:object_r:tactiq_agent_log_t,s0)
+
+# Device state and envelopes on the data partition. More specific than the
+# /data(/.*)? entry in tactiq_vault.fc, so these win the match.
+/data/tactiq/keys(/.*)?		gen_context(system_u:object_r:tactiq_agent_state_t,s0)
+/data/tactiq/counter(/.*)?	gen_context(system_u:object_r:tactiq_agent_state_t,s0)
+/data/tactiq/audit(/.*)?	gen_context(system_u:object_r:tactiq_agent_audit_t,s0)
