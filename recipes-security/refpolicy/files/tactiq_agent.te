@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.2.0)
+policy_module(tactiq_agent, 2.3.0)
 
 ########################################
 # Type declarations
@@ -18,6 +18,27 @@ type tactiq_agent_cert_t;
 # here; key material never does.
 type tactiq_agent_runtime_t;
 files_runtime_file(tactiq_agent_runtime_t)
+
+# /data/tactiq is split by what a file is, not by who writes it:
+#   tactiq_vault_data_t   delivered artifacts -- signed, appraised, measured
+#   tactiq_agent_state_t  device identity and counter -- produced on the
+#                         device, so nobody can sign them: measured, never
+#                         appraised. One inode each, read once per boot, so
+#                         the measurement contribution is fixed.
+#   tactiq_agent_audit_t  envelopes the agent writes -- a new inode every
+#                         cycle, so measuring them would extend a PCR without
+#                         bound against no reference value, and an envelope
+#                         quoting a PCR it just extended proves nothing.
+#                         Neither measured nor appraised.
+type tactiq_agent_state_t;
+files_type(tactiq_agent_state_t)
+
+type tactiq_agent_audit_t;
+files_type(tactiq_agent_audit_t)
+
+require { type tactiq_data_fs_t; }
+allow tactiq_agent_state_t tactiq_data_fs_t:filesystem associate;
+allow tactiq_agent_audit_t tactiq_data_fs_t:filesystem associate;
 
 # Transition: systemd starts binary -> runs as tactiq_agent_t
 init_daemon_domain(tactiq_agent_t, tactiq_agent_exec_t)
@@ -147,6 +168,13 @@ gen_require(`
 ')
 allow tactiq_agent_t tactiq_vault_data_t:dir { search read open getattr write add_name remove_name };
 allow tactiq_agent_t tactiq_vault_data_t:file { create read write open getattr setattr lock unlink };
+
+# Device state and envelopes carry their own labels; the permission set is
+# the same as for the vault tree, the difference is what IMA does with them.
+allow tactiq_agent_t tactiq_agent_state_t:dir { search read open getattr write add_name remove_name };
+allow tactiq_agent_t tactiq_agent_state_t:file { create read write open getattr setattr lock unlink };
+allow tactiq_agent_t tactiq_agent_audit_t:dir { search read open getattr write add_name remove_name };
+allow tactiq_agent_t tactiq_agent_audit_t:file { create read write open getattr setattr lock unlink };
 
 # --- Tmpfs fallback (for QEMU testing and runtime mounts) ---
 gen_require(`

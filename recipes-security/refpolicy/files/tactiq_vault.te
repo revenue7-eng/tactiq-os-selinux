@@ -1,4 +1,4 @@
-policy_module(tactiq_vault, 2.0.1)
+policy_module(tactiq_vault, 2.1.0)
 
 ########################################
 # Type declarations
@@ -12,10 +12,18 @@ type tactiq_vault_var_t;
 type tactiq_vault_data_t;
 files_type(tactiq_vault_data_t)
 
-# tactiq_vault_data_t is assigned by relabel (restorecon / setfiles) and by
-# fs-wide context= mount of /data. Both require the file_type attribute;
-# without files_type() the relabel is denied and /data stays unlabeled_t.
-files_type(tactiq_vault_data_t)
+# tactiq_vault_data_t is assigned by relabel (restorecon / setfiles). The
+# relabel requires the file_type attribute; without files_type() it is
+# denied and /data stays unlabeled_t.
+
+# Filesystem label of the data partition, set by fscontext= in data.mount.
+# A file type must not double as the filesystem type: every file type on
+# the partition needs an explicit associate with the filesystem type, so
+# reusing one of them would make that type privileged over its peers.
+type tactiq_data_fs_t;
+fs_type(tactiq_data_fs_t)
+
+allow tactiq_vault_data_t tactiq_data_fs_t:filesystem associate;
 
 # Transition: systemd → tactiq_vault_t
 init_daemon_domain(tactiq_vault_t, tactiq_vault_exec_t)
@@ -83,14 +91,15 @@ dev_read_urand(tactiq_vault_t)
 
 ########################################
 # data.mount: systemd mounts p5 with
-# context=system_u:object_r:tactiq_vault_data_t:s0 (dev scaffolding until
-# the LUKS unlock unit exists). The context= option makes mount(8) perform
-# a filesystem-class relabel, which needs explicit permission (observed
-# enforcing failure of data.mount; confirmed working in permissive).
+# fscontext=system_u:object_r:tactiq_data_fs_t:s0 (dev scaffolding until
+# the LUKS unlock unit exists). fscontext= labels the superblock only and
+# leaves per-file labels to the xattr, which is what lets more than one
+# file type live on the partition. The mount sets a filesystem-class
+# label, which needs explicit permission.
 ########################################
 gen_require(`
     type mount_t, setfiles_t;
 ')
-allow mount_t tactiq_vault_data_t:filesystem { getattr mount remount unmount relabelfrom relabelto };
+allow mount_t tactiq_data_fs_t:filesystem { getattr mount remount unmount relabelfrom relabelto };
 # restorecon in data-tactiq-dirs.service stats the filesystem:
-allow setfiles_t tactiq_vault_data_t:filesystem getattr;
+allow setfiles_t tactiq_data_fs_t:filesystem getattr;
