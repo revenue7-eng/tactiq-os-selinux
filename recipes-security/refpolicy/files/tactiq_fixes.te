@@ -1,4 +1,4 @@
-policy_module(tactiq_fixes, 2.0.9)
+policy_module(tactiq_fixes, 2.1.0)
 
 ########################################
 # Fix: busybox klogd/syslogd need read+map on bin_t
@@ -92,6 +92,24 @@ allow initrc_t unlabeled_t:dir { relabelfrom getattr search read open };
 allow initrc_t unlabeled_t:file { relabelfrom getattr read open };
 allow initrc_t tactiq_vault_data_t:dir { relabelto getattr search read open };
 allow initrc_t tactiq_vault_data_t:file { relabelto getattr read open };
+
+# Label separation: restorecon moves keys/counter/audit out of the vault type
+# into the state and audit types, so the source of the relabel is the vault
+# type, not unlabeled_t. Both domains are covered because which one runs the
+# relabel is decided by the unit, not by this policy.
+require { type tactiq_agent_state_t; type tactiq_agent_audit_t; }
+allow initrc_t tactiq_vault_data_t:dir relabelfrom;
+allow initrc_t tactiq_vault_data_t:file relabelfrom;
+allow initrc_t tactiq_agent_state_t:dir { relabelto getattr search read open };
+allow initrc_t tactiq_agent_state_t:file { relabelto getattr read open };
+allow initrc_t tactiq_agent_audit_t:dir { relabelto getattr search read open };
+allow initrc_t tactiq_agent_audit_t:file { relabelto getattr read open };
+allow init_t tactiq_vault_data_t:dir relabelfrom;
+allow init_t tactiq_vault_data_t:file relabelfrom;
+allow init_t tactiq_agent_state_t:dir { relabelto getattr search read open };
+allow init_t tactiq_agent_state_t:file { relabelto getattr read open };
+allow init_t tactiq_agent_audit_t:dir { relabelto getattr search read open };
+allow init_t tactiq_agent_audit_t:file { relabelto getattr read open };
 
 ########################################
 # Fix: TPM device file association on devtmpfs
