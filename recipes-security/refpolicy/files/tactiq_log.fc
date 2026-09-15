@@ -1,0 +1,18 @@
+# Level 0 logging.
+#
+# /data(/.*)? is tactiq_vault_data_t in tactiq_vault.fc; these entries are
+# more specific, so they win the match the same way tactiq_agent.fc does
+# for the agent's own subtree.
+
+# The journal keeps the ordinary journal type rather than a TactiQ one.
+# systemd-journald is then writing the same label it writes on any other
+# system and needs no rule of its own; the only thing that is new is the
+# filesystem it sits on, handled by an associate in tactiq_log.te.
+/data/log/journal(/.*)?		gen_context(system_u:object_r:systemd_journal_t,mls_systemhigh)
+
+# Kernel crash records get their own type, not the journal's: they are
+# recovered from a hardware area rather than written by a logging daemon,
+# and a reader of one should not thereby read the other.
+/data/log/pstore(/.*)?		gen_context(system_u:object_r:tactiq_pstore_log_t,s0)
+
+/usr/sbin/tactiq-log-setup	--	gen_context(system_u:object_r:tactiq_logsetup_exec_t,s0)

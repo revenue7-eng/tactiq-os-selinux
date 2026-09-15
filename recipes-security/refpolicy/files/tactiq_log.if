@@ -1,0 +1,20 @@
+## <summary>Level 0 logging: persistent journal and kernel crash records (TactiQ).</summary>
+
+########################################
+## <summary>
+##	Read the kernel crash records recovered from the ramoops area.
+## </summary>
+## <param name="domain">
+##	<summary>
+##	Domain allowed access.
+##	</summary>
+## </param>
+#
+interface(`tactiq_log_read_pstore_records',`
+	gen_require(`
+		type tactiq_pstore_log_t;
+	')
+
+	allow $1 tactiq_pstore_log_t:dir list_dir_perms;
+	allow $1 tactiq_pstore_log_t:file read_file_perms;
+')
