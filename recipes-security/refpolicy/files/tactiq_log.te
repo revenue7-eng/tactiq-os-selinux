@@ -1,0 +1,108 @@
+policy_module(tactiq_log, 1.0.0)
+
+########################################
+#
+# Declarations
+#
+# Level 0 is logging: a failure has to leave a record without a person
+# holding a serial cable. On this image neither half of that was in place.
+# /var/log is a volatile bind mount, so the journal died with every
+# reboot, and pstore had no backend, so a panic before init left nothing
+# at all. Both records now land on the data partition, which is what these
+# types and rules are for.
+#
+
+# The setup oneshot: creates the layout on /data and moves crash records
+# off the ramoops area. It does not mount anything. The journal bind is a
+# systemd .mount unit, so the mount privilege stays with systemd and this
+# domain never receives it.
+type tactiq_logsetup_t;
+type tactiq_logsetup_exec_t;
+init_daemon_domain(tactiq_logsetup_t, tactiq_logsetup_exec_t)
+
+# Crash records recovered from /sys/fs/pstore.
+type tactiq_pstore_log_t;
+files_type(tactiq_pstore_log_t)
+
+########################################
+#
+# Local policy
+#
+
+gen_require(`
+	type systemd_journal_t;
+	type tactiq_data_fs_t;
+	type tactiq_vault_data_t;
+	type var_log_t;
+	type var_t;
+	type mount_t;
+	type init_t;
+')
+
+# The data partition's filesystem type is set by fscontext= in data.mount,
+# and every file type living on it needs an explicit associate. Without
+# these two the journal and the crash records cannot exist there at all.
+allow systemd_journal_t tactiq_data_fs_t:filesystem associate;
+allow tactiq_pstore_log_t tactiq_data_fs_t:filesystem associate;
+
+# --- Self ---
+allow tactiq_logsetup_t self:capability { chown dac_override fowner fsetid };
+allow tactiq_logsetup_t self:fifo_file rw_fifo_file_perms;
+
+# --- Layout under /data ---
+# /data/log is created under the vault type and then relabelled by
+# restorecon to the types in tactiq_log.fc.
+allow tactiq_logsetup_t tactiq_vault_data_t:dir { search getattr write add_name remove_name create setattr };
+
+allow tactiq_logsetup_t tactiq_pstore_log_t:dir manage_dir_perms;
+allow tactiq_logsetup_t tactiq_pstore_log_t:file manage_file_perms;
+
+# The journal directory is created and chmodded here, not written to:
+# journald owns its contents.
+allow tactiq_logsetup_t systemd_journal_t:dir { search getattr create setattr add_name };
+
+# --- The mount point under /var/volatile ---
+# /var/volatile is a tmpfs mounted with rootcontext=var_t, and
+# /var/volatile/log has to exist before var-log-journal.mount can create
+# its mount point there. Measured on hardware: without this the setup
+# service reports
+#     mkdir: can't create directory '/var/volatile/log': Permission denied
+# and the journal mount fails behind it. Refpolicy dontaudits the denial,
+# so nothing appears in the audit log and only the script's own message
+# names it.
+allow tactiq_logsetup_t var_t:dir { search getattr write add_name create setattr };
+
+# --- Crash records ---
+# Read and then unlink: the ramoops area is not reused while records are
+# present, so leaving them would mean the next failure has nowhere to go.
+fs_getattr_pstorefs(tactiq_logsetup_t)
+fs_list_pstore_dirs(tactiq_logsetup_t)
+fs_read_pstore_files(tactiq_logsetup_t)
+fs_delete_pstore_files(tactiq_logsetup_t)
+
+# --- restorecon ---
+seutil_domtrans_setfiles(tactiq_logsetup_t)
+
+# --- The shell and coreutils the script is made of ---
+corecmd_exec_bin(tactiq_logsetup_t)
+corecmd_exec_shell(tactiq_logsetup_t)
+
+# --- Ordinary runtime ---
+kernel_read_system_state(tactiq_logsetup_t)
+files_read_etc_files(tactiq_logsetup_t)
+miscfiles_read_localization(tactiq_logsetup_t)
+logging_send_syslog_msg(tactiq_logsetup_t)
+
+########################################
+#
+# var-log-journal.mount
+#
+# systemd binds /data/log/journal onto /var/log/journal. The mount point
+# is created under the volatile /var/log and carries var_log_t; the source
+# carries the journal type. Both ends need naming, and the mount is
+# performed by systemd rather than by any TactiQ domain.
+#
+allow mount_t var_log_t:dir mounton;
+allow init_t var_log_t:dir mounton;
+allow mount_t systemd_journal_t:dir { getattr search };
+allow mount_t tactiq_data_fs_t:filesystem getattr;
