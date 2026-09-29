@@ -1,0 +1,89 @@
+# tactiq_log hardware pass, Rock 5A, slot B. Console output as captured.
+
+root@tactiq-rock5a:~# cat /etc/tactiq-release
+TACTIQ_OS_VERSION=2.1.0
+TACTIQ_OS_CODENAME=hardened-edge
+TACTIQ_BUILD_MACHINE=tactiq-rock5a
+TACTIQ_META_TACTIQ_GIT=v2.1.0-rc12
+TACTIQ_IMAGE_NAME=tactiq-image-dev
+TACTIQ_RELEASE_DATE=2026-09-24
+
+# state block (cmdline, getenforce, /dev/mapper)
+SELINUX Enforcing
+IMA     OFF
+ROOT    root=PARTLABEL=rootfs_b
+DM      NONE
+SLOT    B
+
+root@tactiq-rock5a:~# semodule -l | grep tactiq
+tactiq_agent
+tactiq_ctl
+tactiq_edge_daemon
+tactiq_fixes
+tactiq_ima
+tactiq_log
+tactiq_rauc
+tactiq_tamper
+tactiq_tpm
+tactiq_vault
+tactiq_verifier
+
+root@tactiq-rock5a:~# journalctl -b -o cat | grep denied | head -n 40
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/run/systemd/journal/dev-log" dev="tmpfs" ino=1339 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:syslogd_runtime_t:s0 tclass=sock_file permissive=0
+AVC avc:  denied  { getattr } for  pid=393 comm="systemd-network" path="/dev/kmsg" dev="tmpfs" ino=11 scontext=system_u:system_r:systemd_networkd_t:s0 tcontext=system_u:object_r:init_runtime_t:s0 tclass=chr_file permissive=0
+
+root@tactiq-rock5a:~# journalctl --list-boots | tail -n 5
+IDX BOOT ID                          FIRST ENTRY                 LAST ENTRY
+ -3 4e470e76daea4f169f94d0f84540b8b0 Fri 2026-03-13 15:35:09 UTC Fri 2026-03-13 15:49:09 UTC
+ -2 e74de65641bd46ab9e16a346d05d9082 Fri 2026-03-13 15:35:09 UTC Fri 2026-03-13 15:50:24 UTC
+ -1 c9db6239acb0499b9cd09af2a3fd5e0e Fri 2026-03-13 15:35:09 UTC Fri 2026-03-13 16:16:13 UTC
+  0 1f29b1ec05934bacad8e83ac0bc88ba6 Fri 2026-03-13 15:35:09 UTC Fri 2026-03-13 15:52:18 UTC
+
+root@tactiq-rock5a:~# journalctl -b -1 -k -o cat | grep -m1 'Kernel command line'
+Kernel command line: root=PARTLABEL=rootfs_b rootwait rw rootfstype=ext4 earlycon panic=5 rauc.slot=B console=tty1 console=ttyS2,1500000n8
+root@tactiq-rock5a:~# journalctl -b -2 -k -o cat | grep -m1 'Kernel command line'
+Kernel command line: root=PARTLABEL=rootfs_b rootwait rw rootfstype=ext4 earlycon panic=5 rauc.slot=B console=tty1 console=ttyS2,1500000n8
+root@tactiq-rock5a:~# journalctl -b -3 -k -o cat | grep -m1 'Kernel command line'
+Kernel command line: root=PARTLABEL=rootfs_b rootwait rw rootfstype=ext4 earlycon panic=5 rauc.slot=B console=tty1 console=ttyS2,1500000n8
+
+root@tactiq-rock5a:~# ls -Z /data/log
+system_u:object_r:systemd_journal_t:s0 journal    system_u:object_r:tactiq_pstore_log_t:s0 pstore
+
+root@tactiq-rock5a:~# ls -l /data/log/journal
+drwxr-sr-x    2 root     systemd-journal      4096 Mar 13 15:35 2179ddc205a54192a947f091f27d4deb
+drwxr-sr-x    2 root     render        4096 Mar 13 15:35 302c58a5a5f74620a773642b9932c670
+drwxr-sr-x    2 root     render        4096 Mar 13 15:35 46758ce7b3e14680acfc4ea07210fd39
+drwxr-sr-x    2 root     render        4096 Mar 13 15:35 55b6d69af94143908cb46fe94a50cbf7
+drwxr-sr-x    2 root     systemd-journal      4096 Mar 13 15:35 6af8bf593353426bbd4133b23c0032a1
+drwxr-sr-x    2 root     systemd-journal      4096 Mar 13 15:35 a1e175204d594fa0807128b4604340db
+drwxr-sr-x    2 root     systemd-journal      4096 Sep 17  2026 abbdc58abcd64c62a5fa661a63704c0e
+drwxr-sr-x    2 root     systemd-journal      4096 Sep 16  2026 cb5a5548aea647488a3d29c57f1034a3
+drwxr-sr-x    2 root     systemd-journal      4096 Sep 17  2026 e4e87e2418c742a6b38a8f2a944d6863
+drwxr-sr-x    2 root     systemd-journal      4096 Sep 21  2026 e9bb6337882c479987b1d1c060cf0e4f
+drwxr-sr-x    2 root     render        4096 Mar 13 15:35 fa19087bd4644282b77c07b4cb8453cb
