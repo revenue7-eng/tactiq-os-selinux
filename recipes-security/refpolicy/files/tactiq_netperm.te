@@ -28,6 +28,7 @@ gen_require(`
 	type tactiq_data_fs_t;
 	type tactiq_vault_data_t;
 	type tactiq_agent_unit_t;
+	class service { start status };
 ')
 
 allow tactiq_site_perm_t tactiq_data_fs_t:filesystem associate;
