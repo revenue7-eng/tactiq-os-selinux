@@ -1,4 +1,4 @@
-policy_module(tactiq_netperm, 1.0.0)
+policy_module(tactiq_netperm, 1.0.1)
 
 ########################################
 # Site network permission for tactiq-agent
@@ -57,6 +57,9 @@ files_read_usr_files(tactiq_netperm_t)
 
 # Device serial: /proc/device-tree -> /sys/firmware/devicetree/base
 kernel_read_proc_symlinks(tactiq_netperm_t)
+# libselinux in tr, mktemp and cp reads /proc/filesystems at start; denied
+# without this on hardware (2026-09-30), harmless but noise in the audit log.
+kernel_read_system_state(tactiq_netperm_t)
 dev_read_sysfs(tactiq_netperm_t)
 
 files_read_etc_files(tactiq_netperm_t)
