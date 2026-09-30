@@ -1,4 +1,4 @@
-policy_module(tactiq_netperm, 1.0.1)
+policy_module(tactiq_netperm, 1.0.2)
 
 ########################################
 # Site network permission for tactiq-agent
@@ -63,6 +63,8 @@ kernel_read_system_state(tactiq_netperm_t)
 dev_read_sysfs(tactiq_netperm_t)
 
 files_read_etc_files(tactiq_netperm_t)
+# openssl reads its configuration under /etc/ssl (cert_t).
+miscfiles_read_generic_certs(tactiq_netperm_t)
 miscfiles_read_localization(tactiq_netperm_t)
 logging_send_syslog_msg(tactiq_netperm_t)
 
@@ -70,4 +72,14 @@ logging_send_syslog_msg(tactiq_netperm_t)
 # checks SetUnitProperties as "start" on the label of the target unit file,
 # so the grant names the agent's unit type and no other unit.
 init_stream_connect(tactiq_netperm_t)
+# systemctl stats /proc on start. It also probes CAP_NET_ADMIN when setting
+# IPAddressAllow=; the change is made by PID 1, not by this domain, so the
+# capability is never granted here, only kept out of the audit log.
+kernel_getattr_proc(tactiq_netperm_t)
+dontaudit tactiq_netperm_t self:capability net_admin;
+# systemctl also reads kernel sysctls and looks at /proc/1 to tell whether
+# it runs under systemd; the first is harmless to allow, the second is
+# kept out of the log rather than granting a view of PID 1's state.
+kernel_read_kernel_sysctls(tactiq_netperm_t)
+init_dontaudit_read_state(tactiq_netperm_t)
 allow tactiq_netperm_t tactiq_agent_unit_t:service { start status };
