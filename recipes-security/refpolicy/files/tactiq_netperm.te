@@ -1,0 +1,69 @@
+policy_module(tactiq_netperm, 1.0.0)
+
+########################################
+# Site network permission for tactiq-agent
+# Design: THREAT_MODEL.md in tactiq-os, agent network exception.
+#
+# A oneshot reads a signed permission file from /data/site, checks it,
+# and sets IPAddressAllow= on tactiq-agent through systemd. It may change
+# properties of that one unit and nothing else.
+########################################
+
+type tactiq_netperm_t;
+type tactiq_netperm_exec_t;
+init_daemon_domain(tactiq_netperm_t, tactiq_netperm_exec_t)
+
+# The permission file and its signature. Same class as
+# tactiq_agent_state_t: measured by IMA, never appraised. Appraisal would
+# demand an IMA-accepted signature, which is the key this design keeps out
+# of field use; the file carries its own signature, checked by the oneshot.
+type tactiq_site_perm_t;
+files_type(tactiq_site_perm_t)
+
+# Private scratch copy: the file is verified and parsed from the copy only.
+type tactiq_netperm_tmp_t;
+files_tmp_file(tactiq_netperm_tmp_t)
+
+gen_require(`
+	type tactiq_data_fs_t;
+	type tactiq_vault_data_t;
+	type tactiq_agent_unit_t;
+')
+
+allow tactiq_site_perm_t tactiq_data_fs_t:filesystem associate;
+
+########################################
+# Permissions
+########################################
+
+allow tactiq_netperm_t self:fifo_file rw_fifo_file_perms;
+
+# /data is vault-labelled; only search through it, read nothing there.
+allow tactiq_netperm_t tactiq_vault_data_t:dir search_dir_perms;
+allow tactiq_netperm_t tactiq_site_perm_t:dir list_dir_perms;
+allow tactiq_netperm_t tactiq_site_perm_t:file read_file_perms;
+
+allow tactiq_netperm_t tactiq_netperm_tmp_t:dir manage_dir_perms;
+allow tactiq_netperm_t tactiq_netperm_tmp_t:file manage_file_perms;
+files_tmp_filetrans(tactiq_netperm_t, tactiq_netperm_tmp_t, { dir file })
+
+# sh, cp, tr, mktemp, rm, openssl, systemctl
+corecmd_exec_shell(tactiq_netperm_t)
+corecmd_exec_bin(tactiq_netperm_t)
+
+# Public half of the permission key, /usr/share/tactiq/netperm.pem
+files_read_usr_files(tactiq_netperm_t)
+
+# Device serial: /proc/device-tree -> /sys/firmware/devicetree/base
+kernel_read_proc_symlinks(tactiq_netperm_t)
+dev_read_sysfs(tactiq_netperm_t)
+
+files_read_etc_files(tactiq_netperm_t)
+miscfiles_read_localization(tactiq_netperm_t)
+logging_send_syslog_msg(tactiq_netperm_t)
+
+# systemctl set-property talks to PID 1 over its private socket. systemd
+# checks SetUnitProperties as "start" on the label of the target unit file,
+# so the grant names the agent's unit type and no other unit.
+init_stream_connect(tactiq_netperm_t)
+allow tactiq_netperm_t tactiq_agent_unit_t:service { start status };

@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.3.0)
+policy_module(tactiq_agent, 2.4.0)
 
 ########################################
 # Type declarations
@@ -42,6 +42,11 @@ allow tactiq_agent_audit_t tactiq_data_fs_t:filesystem associate;
 
 # Transition: systemd starts binary -> runs as tactiq_agent_t
 init_daemon_domain(tactiq_agent_t, tactiq_agent_exec_t)
+
+# The agent's own unit file label, so that a grant on it (tactiq_netperm
+# sets IPAddressAllow= on this unit) does not extend to every unit.
+type tactiq_agent_unit_t;
+systemd_unit_file(tactiq_agent_unit_t)
 
 ########################################
 # Permissions
