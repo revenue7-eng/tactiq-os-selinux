@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.4.0)
+policy_module(tactiq_agent, 2.4.1)
 
 ########################################
 # Type declarations
@@ -189,6 +189,20 @@ gen_require(`
 allow tactiq_agent_t tmpfs_t:dir { search getattr };
 allow tactiq_agent_t user_tmpfs_t:dir { search read open getattr write add_name remove_name };
 allow tactiq_agent_t user_tmpfs_t:file { create read write open getattr setattr lock unlink rename };
+
+# --- PID 1 evaluates the skip-tpm switch ---
+# The agent unit carries ConditionPathExists=!/etc/tactiq/skip-tpm. systemd
+# (init_t) evaluates it and was denied search on /etc/tactiq on hardware
+# (permissive=0), so the condition never saw the file and the switch did
+# nothing, silently. stat() on the switch needs search on the directory and
+# getattr on the file. Only search has been observed so far, because the
+# tested image had no switch file; getattr is what the next step requires
+# once the file exists. init_t gets no read: the content stays the agent's.
+gen_require(`
+    type init_t;
+')
+allow init_t tactiq_agent_conf_t:dir search_dir_perms;
+allow init_t tactiq_agent_conf_t:file getattr_file_perms;
 
 # --- Deny everything else ---
 # Implicit: all other access is denied by SELinux default-deny
