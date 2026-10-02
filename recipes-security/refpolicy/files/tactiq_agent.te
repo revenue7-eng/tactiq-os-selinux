@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.4.1)
+policy_module(tactiq_agent, 2.4.2)
 
 ########################################
 # Type declarations
@@ -6,11 +6,21 @@ policy_module(tactiq_agent, 2.4.1)
 
 type tactiq_agent_t;
 type tactiq_agent_exec_t;
+# File types are declared through the refpolicy macros so they carry the
+# file_type attribute. Declared bare, a type is invisible to the rest of the
+# system: PID 1 could not even search /etc/tactiq, root could not stat it, and
+# relabel tools have no rights on it. Agent access is still granted explicitly
+# below; these macros add no access for the agent itself.
 type tactiq_agent_conf_t;
+files_config_file(tactiq_agent_conf_t)
 type tactiq_agent_log_t;
+logging_log_file(tactiq_agent_log_t)
 type tactiq_agent_var_t;
+files_type(tactiq_agent_var_t)
 type tactiq_agent_tmp_t;
+files_tmp_file(tactiq_agent_tmp_t)
 type tactiq_agent_cert_t;
+files_type(tactiq_agent_cert_t)
 
 # Scratch directory created by systemd's RuntimeDirectory=. ProtectSystem=strict
 # makes the whole hierarchy read-only, /run included, so the agent has nowhere
