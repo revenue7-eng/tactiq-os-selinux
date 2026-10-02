@@ -1,4 +1,4 @@
-policy_module(tactiq_tamper, 2.0.1)
+policy_module(tactiq_tamper, 2.0.2)
 
 ########################################
 # Type declarations
@@ -7,8 +7,11 @@ policy_module(tactiq_tamper, 2.0.1)
 type tactiq_tamper_t;
 type tactiq_tamper_exec_t;
 type tactiq_tamper_conf_t;
+files_config_file(tactiq_tamper_conf_t)
 type tactiq_tamper_log_t;
+logging_log_file(tactiq_tamper_log_t)
 type tactiq_tamper_var_t;
+files_type(tactiq_tamper_var_t)
 # Device-node type: dev_node() grants the device_node attribute, which is
 # what lets systemd and udev relabel /dev/i2c-* and /dev/gpiochip* to this
 # type at boot (observed enforcing denials: init_t/udev_t relabelto,

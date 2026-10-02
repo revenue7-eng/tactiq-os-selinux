@@ -1,4 +1,4 @@
-policy_module(tactiq_edge_daemon, 1.0.0)
+policy_module(tactiq_edge_daemon, 1.0.1)
 
 ########################################
 # Type declarations
@@ -7,6 +7,7 @@ type tactiq_edge_daemon_t;
 type tactiq_edge_daemon_exec_t;
 # Model + fixtures the daemon reads (read-only).
 type tactiq_edge_model_t;
+files_type(tactiq_edge_model_t)
 # The AF_UNIX listening socket node under /run/tactiq.
 type tactiq_edge_runtime_t;
 
