@@ -1,4 +1,4 @@
-policy_module(tactiq_tpm, 2.0.1)
+policy_module(tactiq_tpm, 2.0.2)
 
 ########################################
 # Type declarations
@@ -7,8 +7,11 @@ policy_module(tactiq_tpm, 2.0.1)
 type tactiq_tpm_t;
 type tactiq_tpm_exec_t;
 type tactiq_tpm_conf_t;
+files_config_file(tactiq_tpm_conf_t)
 type tactiq_tpm_log_t;
+logging_log_file(tactiq_tpm_log_t)
 type tactiq_tpm_var_t;
+files_type(tactiq_tpm_var_t)
 
 # TPM device types
 type tactiq_tpm_device_t;

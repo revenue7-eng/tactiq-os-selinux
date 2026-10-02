@@ -1,4 +1,4 @@
-policy_module(agentgateway, 1.1.0)
+policy_module(agentgateway, 1.1.1)
 
 ########################################
 # Type declarations
@@ -6,7 +6,9 @@ policy_module(agentgateway, 1.1.0)
 type agentgateway_t;
 type agentgateway_exec_t;
 type agentgateway_conf_t;
+files_config_file(agentgateway_conf_t)
 type agentgateway_log_t;
+logging_log_file(agentgateway_log_t)
 
 # Transition: systemd starts binary -> runs as agentgateway_t
 init_daemon_domain(agentgateway_t, agentgateway_exec_t)

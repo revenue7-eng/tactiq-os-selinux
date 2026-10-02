@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.4.0)
+policy_module(tactiq_agent, 2.4.2)
 
 ########################################
 # Type declarations
@@ -6,11 +6,21 @@ policy_module(tactiq_agent, 2.4.0)
 
 type tactiq_agent_t;
 type tactiq_agent_exec_t;
+# File types are declared through the refpolicy macros so they carry the
+# file_type attribute. Declared bare, a type is invisible to the rest of the
+# system: PID 1 could not even search /etc/tactiq, root could not stat it, and
+# relabel tools have no rights on it. Agent access is still granted explicitly
+# below; these macros add no access for the agent itself.
 type tactiq_agent_conf_t;
+files_config_file(tactiq_agent_conf_t)
 type tactiq_agent_log_t;
+logging_log_file(tactiq_agent_log_t)
 type tactiq_agent_var_t;
+files_type(tactiq_agent_var_t)
 type tactiq_agent_tmp_t;
+files_tmp_file(tactiq_agent_tmp_t)
 type tactiq_agent_cert_t;
+files_type(tactiq_agent_cert_t)
 
 # Scratch directory created by systemd's RuntimeDirectory=. ProtectSystem=strict
 # makes the whole hierarchy read-only, /run included, so the agent has nowhere
@@ -189,6 +199,20 @@ gen_require(`
 allow tactiq_agent_t tmpfs_t:dir { search getattr };
 allow tactiq_agent_t user_tmpfs_t:dir { search read open getattr write add_name remove_name };
 allow tactiq_agent_t user_tmpfs_t:file { create read write open getattr setattr lock unlink rename };
+
+# --- PID 1 evaluates the skip-tpm switch ---
+# The agent unit carries ConditionPathExists=!/etc/tactiq/skip-tpm. systemd
+# (init_t) evaluates it and was denied search on /etc/tactiq on hardware
+# (permissive=0), so the condition never saw the file and the switch did
+# nothing, silently. stat() on the switch needs search on the directory and
+# getattr on the file. Only search has been observed so far, because the
+# tested image had no switch file; getattr is what the next step requires
+# once the file exists. init_t gets no read: the content stays the agent's.
+gen_require(`
+    type init_t;
+')
+allow init_t tactiq_agent_conf_t:dir search_dir_perms;
+allow init_t tactiq_agent_conf_t:file getattr_file_perms;
 
 # --- Deny everything else ---
 # Implicit: all other access is denied by SELinux default-deny

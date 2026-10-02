@@ -1,4 +1,4 @@
-policy_module(tactiq_verifier, 2.0.0)
+policy_module(tactiq_verifier, 2.0.1)
 
 ########################################
 # Type declarations
@@ -7,11 +7,16 @@ policy_module(tactiq_verifier, 2.0.0)
 type tactiq_verifier_t;
 type tactiq_verifier_exec_t;
 type tactiq_verifier_conf_t;
+files_config_file(tactiq_verifier_conf_t)
 type tactiq_verifier_log_t;
+logging_log_file(tactiq_verifier_log_t)
 type tactiq_verifier_var_t;
+files_type(tactiq_verifier_var_t)
 type tactiq_verifier_cert_t;
+files_type(tactiq_verifier_cert_t)
 type tactiq_verifier_port_t;
 type tactiq_verifier_crl_t;
+files_type(tactiq_verifier_crl_t)
 
 # Transition: systemd → tactiq_verifier_t
 init_daemon_domain(tactiq_verifier_t, tactiq_verifier_exec_t)
