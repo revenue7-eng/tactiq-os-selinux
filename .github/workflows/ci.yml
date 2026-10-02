@@ -66,6 +66,9 @@ jobs:
           done
           exit $rc
 
+      - name: Assert every labelled file type carries file_type
+        run: python3 scripts/check-file-types.py
+
   m4-syntax:
     name: m4 syntax check on .te files
     runs-on: ubuntu-24.04
