@@ -5,6 +5,7 @@ TACTIQ_MODULES = "tactiq_fixes tactiq_agent tactiq_tpm tactiq_verifier tactiq_ta
 SRC_URI += " \
     file://0001-squashfs-genfscon-tactiq.patch \
     file://0001-corenetwork-declare-agentgateway-port.patch \
+    file://0003-udev-own-type-for-udev-tmpfs-files-backport.patch \
 \
     file://tactiq_fixes.te \
     file://tactiq_fixes.fc \
