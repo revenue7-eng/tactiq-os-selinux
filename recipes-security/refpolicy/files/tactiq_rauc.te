@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.10.1)
+policy_module(tactiq_rauc, 2.10.2)
 
 ########################################
 #
@@ -162,6 +162,11 @@ allow tactiq_rauc_t tactiq_vault_data_t:filesystem getattr;
 # (77 denials on installs from /data, September 2026 board journals).
 allow tactiq_rauc_t tactiq_data_fs_t:filesystem getattr;
 dontaudit udev_t tactiq_vault_data_t:file getattr;
+# Same probe when the bundle is installed straight from the USB stick: udev
+# stats the loop device's backing file on FAT (two denials on the first
+# install from the stick, board, 2026-10-06; the install itself succeeded).
+# Treated as for /data above: access stays denied, the record is dropped.
+dontaudit udev_t dosfs_t:file getattr;
 
 # var_lock_t — fw_printenv/fw_setenv lock file
 allow tactiq_rauc_t var_lock_t:lnk_file read_lnk_file_perms;
