@@ -1,4 +1,4 @@
-policy_module(tactiq_edge_daemon, 1.0.1)
+policy_module(tactiq_edge_daemon, 1.0.3)
 
 ########################################
 # Type declarations
@@ -10,6 +10,19 @@ type tactiq_edge_model_t;
 files_type(tactiq_edge_model_t)
 # The AF_UNIX listening socket node under /run/tactiq.
 type tactiq_edge_runtime_t;
+# Cartridges delivered to the data partition (/data/cartridges). Outside
+# tactiq_vault_data_t on purpose: that type is appraised by IMA against the
+# .ima keyring, which also verifies executables, so a cartridge key there
+# would validate code. A cartridge carries its own signature, checked by the
+# daemon; IMA measures reads of this type into PCR 11 and never appraises it.
+# No domain is granted execute on it here.
+type tactiq_cartridge_t;
+files_type(tactiq_cartridge_t)
+# The trust anchor the daemon checks cartridge signatures against, shipped in
+# the read-only image under /etc/tactiq/cartridge-anchor. Its own type so that
+# no other domain's /etc/tactiq rule covers it, and only this daemon reads it.
+type tactiq_cartridge_anchor_t;
+files_type(tactiq_cartridge_anchor_t)
 
 # Transition: systemd starts the binary -> runs as tactiq_edge_daemon_t
 init_daemon_domain(tactiq_edge_daemon_t, tactiq_edge_daemon_exec_t)
@@ -46,6 +59,28 @@ files_runtime_filetrans(tactiq_edge_daemon_t, tactiq_edge_runtime_t, sock_file)
 allow tactiq_edge_daemon_t tactiq_edge_model_t:dir list_dir_perms;
 allow tactiq_edge_daemon_t tactiq_edge_model_t:file mmap_read_file_perms;
 
+# --- Cartridges (read-only) ---
+# The daemon reads the file, checks its signature against its anchor list and
+# loads the verified bytes from memory: read, never mmap or execute.
+gen_require(`
+    type tactiq_data_fs_t;
+    type tactiq_vault_data_t;
+')
+allow tactiq_cartridge_t tactiq_data_fs_t:filesystem associate;
+# /data itself is vault-labelled; traverse it, read nothing there.
+allow tactiq_edge_daemon_t tactiq_vault_data_t:dir search_dir_perms;
+allow tactiq_edge_daemon_t tactiq_cartridge_t:dir list_dir_perms;
+allow tactiq_edge_daemon_t tactiq_cartridge_t:file read_file_perms;
+
+# --- Cartridge trust anchor (read-only) ---
+# /etc/tactiq itself is labelled by the agent module; traverse it only.
+gen_require(`
+    type tactiq_agent_conf_t;
+')
+allow tactiq_edge_daemon_t tactiq_agent_conf_t:dir search_dir_perms;
+allow tactiq_edge_daemon_t tactiq_cartridge_anchor_t:dir list_dir_perms;
+allow tactiq_edge_daemon_t tactiq_cartridge_anchor_t:file read_file_perms;
+
 # --- Syslog (operator log: class verdicts) ---
 logging_send_syslog_msg(tactiq_edge_daemon_t)
 
@@ -55,7 +90,7 @@ miscfiles_read_localization(tactiq_edge_daemon_t)
 
 # --- Deny everything else ---
 # Implicit: all other access denied by SELinux default-deny.
-# No data/vault dirs, no devices, no outbound anything. v1 empty perimeter.
+# No other data/vault access, no devices, no outbound anything.
 
 ########################################
 ########################################
