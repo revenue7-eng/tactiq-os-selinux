@@ -1,4 +1,4 @@
-policy_module(tactiq_rauc, 2.10.0)
+policy_module(tactiq_rauc, 2.10.1)
 
 ########################################
 #
@@ -118,6 +118,7 @@ gen_require(`
     type kernel_t;
     type loop_control_device_t;
     type root_t;
+    type tactiq_data_fs_t;
     type tactiq_squashfs_t;
     type tactiq_vault_data_t;
     type tmpfs_t;
@@ -156,6 +157,10 @@ allow tactiq_rauc_t tactiq_squashfs_t:file read_file_perms;
 allow tactiq_rauc_t tactiq_vault_data_t:dir search;
 allow tactiq_rauc_t tactiq_vault_data_t:file { read open getattr lock };
 allow tactiq_rauc_t tactiq_vault_data_t:filesystem getattr;
+# The /data filesystem itself carries tactiq_data_fs_t, not the file label:
+# the line above never matches it. RAUC statfs()es the bundle's filesystem
+# (77 denials on installs from /data, September 2026 board journals).
+allow tactiq_rauc_t tactiq_data_fs_t:filesystem getattr;
 dontaudit udev_t tactiq_vault_data_t:file getattr;
 
 # var_lock_t — fw_printenv/fw_setenv lock file
@@ -177,7 +182,11 @@ dev_rw_lvm_control(tactiq_rauc_t)
 files_read_etc_files(tactiq_rauc_t)
 files_read_etc_runtime_files(tactiq_rauc_t)
 files_tmp_filetrans(tactiq_rauc_t, tactiq_rauc_var_t, { dir file })
+# Bundle straight from the USB stick (FAT, dosfs_t): the delivery route of
+# RUNBOOK_flash. Read only; the bundle signature is what is trusted.
+fs_getattr_dos_fs(tactiq_rauc_t)
 fs_getattr_tmpfs(tactiq_rauc_t)
+fs_read_dos_files(tactiq_rauc_t)
 kernel_list_unlabeled(tactiq_rauc_t)
 kernel_read_kernel_sysctls(tactiq_rauc_t)
 kernel_read_system_state(tactiq_rauc_t)
