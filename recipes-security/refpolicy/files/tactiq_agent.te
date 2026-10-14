@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.4.2)
+policy_module(tactiq_agent, 2.4.3)
 
 ########################################
 # Type declarations
@@ -186,10 +186,12 @@ allow tactiq_agent_t tactiq_vault_data_t:file { create read write open getattr s
 
 # Device state and envelopes carry their own labels; the permission set is
 # the same as for the vault tree, the difference is what IMA does with them.
+# Envelopes also need rename: the agent writes each file of an envelope as
+# <name>.part and renames it into place, so a reader never sees a partial one.
 allow tactiq_agent_t tactiq_agent_state_t:dir { search read open getattr write add_name remove_name };
 allow tactiq_agent_t tactiq_agent_state_t:file { create read write open getattr setattr lock unlink };
 allow tactiq_agent_t tactiq_agent_audit_t:dir { search read open getattr write add_name remove_name };
-allow tactiq_agent_t tactiq_agent_audit_t:file { create read write open getattr setattr lock unlink };
+allow tactiq_agent_t tactiq_agent_audit_t:file { create read write open getattr setattr lock unlink rename };
 
 # --- Tmpfs fallback (for QEMU testing and runtime mounts) ---
 gen_require(`
