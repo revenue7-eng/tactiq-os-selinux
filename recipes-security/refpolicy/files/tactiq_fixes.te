@@ -1,4 +1,4 @@
-policy_module(tactiq_fixes, 2.1.0)
+policy_module(tactiq_fixes, 2.2.0)
 
 ########################################
 # Fix: busybox klogd/syslogd need read+map on bin_t
@@ -189,3 +189,34 @@ neverallow { tactiq_agent_t tactiq_tpm_t tactiq_vault_t tactiq_tamper_t tactiq_r
 # discussion): the updater's execute surface is intentionally being opened
 # (tactiq_squashfs_t + shell_exec_t today). Welding bin_t execution shut now
 # would pre-constrain that design. Revisit once hook-exec settles upstream.
+
+########################################
+# Agent tool boundary
+#
+# A tool is reached only through agentgateway: agentgateway_t is the only
+# TactiQ domain that may execute a tool binary or enter a tool domain.
+# The attributes are empty until the first tool module lands; that module
+# adds its types to them and these assertions then hold for it with no
+# edit here. Like the block above, this grants nothing.
+#
+# unconfined_t is deliberately not listed: the targeted policy grants it
+# broad execute, so listing it would fail the build rather than assert
+# anything. Whether a production image offers any entry into an
+# unconfined domain is a separate question and is not settled here.
+########################################
+attribute tactiq_tool_domain;
+attribute tactiq_tool_exec;
+
+gen_require(`
+    type tactiq_verifier_t;
+    type tactiq_ctl_t;
+    type tactiq_edge_daemon_t;
+    type tactiq_logsetup_t;
+    type tactiq_netperm_t;
+')
+
+# 3. No TactiQ domain other than agentgateway_t executes a tool binary.
+neverallow { tactiq_agent_t tactiq_tpm_t tactiq_verifier_t tactiq_tamper_t tactiq_vault_t tactiq_ctl_t tactiq_rauc_t tactiq_edge_daemon_t tactiq_logsetup_t tactiq_netperm_t } tactiq_tool_exec:file { execute execute_no_trans entrypoint };
+
+# 4. No TactiQ domain other than agentgateway_t enters a tool domain.
+neverallow { tactiq_agent_t tactiq_tpm_t tactiq_verifier_t tactiq_tamper_t tactiq_vault_t tactiq_ctl_t tactiq_rauc_t tactiq_edge_daemon_t tactiq_logsetup_t tactiq_netperm_t } tactiq_tool_domain:process { transition dyntransition };
