@@ -1,0 +1,88 @@
+policy_module(tactiq_stop, 1.0.0)
+
+########################################
+# tactiq-stop: the agent stop service
+#
+# agentgateway asks it over loopback before every tool call (extAuthz). It
+# reads one TPM NV counter whose parity is the stop state and signs its
+# refusals with the AK through tpm2-tools. It listens on 49318 and connects
+# nowhere. It reads the device identity and the gateway configuration, and
+# writes only transient TPM tool output in its runtime directory.
+########################################
+
+type tactiq_stop_t;
+type tactiq_stop_exec_t;
+init_daemon_domain(tactiq_stop_t, tactiq_stop_exec_t)
+
+# Created by systemd's RuntimeDirectory=tactiq-stop. Each process makes a
+# private 0700 subdirectory here for tpm2-tools output, and the operator
+# commands keep their lock file here.
+type tactiq_stop_runtime_t;
+files_runtime_file(tactiq_stop_runtime_t)
+
+# tactiq_stop_port_t is declared by network_port() in corenetwork.te.in
+# (patch 0004 in this layer), for the same reason as agentgateway_port_t:
+# portcon is rejected in a loadable module.
+
+########################################
+# Permissions
+########################################
+
+# --- Self ---
+allow tactiq_stop_t self:process { signal_perms getsched };
+allow tactiq_stop_t self:fifo_file rw_fifo_file_perms;
+allow tactiq_stop_t self:tcp_socket create_stream_socket_perms;
+
+# --- Network: listen on 49318 only ---
+corenet_tcp_bind_tactiq_stop_port(tactiq_stop_t)
+corenet_tcp_bind_generic_node(tactiq_stop_t)
+# Deliberately absent: any name_connect, any DNS. The service answers and
+# never calls out; the unit also sets IPAddressAllow=localhost.
+
+# --- TPM, through tpm2-tools run in this domain ---
+# Same arrangement as tactiq_agent: the tools execute inside the caller's
+# domain and inherit its confinement.
+tpm2_exec(tactiq_stop_t)
+corecmd_exec_bin(tactiq_stop_t)
+libs_use_ld_so(tactiq_stop_t)
+libs_use_shared_libs(tactiq_stop_t)
+files_read_usr_files(tactiq_stop_t)
+tactiq_tpm_access(tactiq_stop_t)
+dev_read_urand(tactiq_stop_t)
+dev_read_sysfs(tactiq_stop_t)
+kernel_read_system_state(tactiq_stop_t)
+files_read_etc_files(tactiq_stop_t)
+miscfiles_read_localization(tactiq_stop_t)
+# OpenSSL inside tpm2-tools probes the default certificate store; nothing
+# is verified against it (see tactiq_agent.te for the measurement).
+gen_require(`
+	type cert_t;
+')
+dontaudit tactiq_stop_t cert_t:dir search;
+
+# --- Runtime directory ---
+allow tactiq_stop_t tactiq_stop_runtime_t:dir manage_dir_perms;
+allow tactiq_stop_t tactiq_stop_runtime_t:file manage_file_perms;
+
+# --- Device identity: read only ---
+# keys/ holds the device id and the AK public area the agent provisioned.
+# The service reads both and never writes there.
+gen_require(`
+	type tactiq_vault_data_t;
+	type tactiq_agent_state_t;
+	type tactiq_agent_conf_t;
+	type agentgateway_conf_t;
+')
+allow tactiq_stop_t tactiq_vault_data_t:dir search;
+allow tactiq_stop_t tactiq_agent_state_t:dir { search getattr };
+allow tactiq_stop_t tactiq_agent_state_t:file { open read getattr };
+
+# --- Gateway configuration: read only ---
+# The service hashes the gateway's config into every stop record and checks
+# its extAuthz settings before it starts.
+allow tactiq_stop_t tactiq_agent_conf_t:dir search;
+allow tactiq_stop_t agentgateway_conf_t:dir list_dir_perms;
+allow tactiq_stop_t agentgateway_conf_t:file read_file_perms;
+
+# --- Syslog ---
+logging_send_syslog_msg(tactiq_stop_t)

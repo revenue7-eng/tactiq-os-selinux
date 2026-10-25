@@ -1,4 +1,4 @@
-policy_module(agentgateway, 1.1.1)
+policy_module(agentgateway, 1.2.0)
 
 ########################################
 # Type declarations
@@ -44,6 +44,14 @@ allow agentgateway_t self:tcp_socket create_stream_socket_perms;
 # --- Network: LISTEN on 49317 only ---
 corenet_tcp_bind_agentgateway_port(agentgateway_t)
 corenet_tcp_bind_generic_node(agentgateway_t)
+#
+# --- Network: ask tactiq-stop before every tool call (extAuthz) ---
+# The single outbound connection the gateway is allowed: to the stop
+# service's port type, 49318. SELinux binds name_connect to the port type,
+# not to an address; the unit's IPAddressAllow=localhost keeps it on
+# loopback. Without this rule the extAuthz call fails, and with
+# failureMode: deny every tool call is refused.
+tactiq_stop_tcp_connect(agentgateway_t)
 #
 # Deliberately ABSENT (egress denied by default-deny):
 #   corenet_tcp_connect_generic_port  -- no outbound connect

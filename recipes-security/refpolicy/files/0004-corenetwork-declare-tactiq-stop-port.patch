@@ -1,0 +1,37 @@
+From: TactiQ OS <andrey@tactiq.ai>
+Date: Sun, 25 Oct 2026 00:00:00 +0000
+Subject: [PATCH] corenetwork: declare tactiq_stop_port_t on TCP 49318
+
+tactiq-stop answers agentgateway's extAuthz question before every tool
+call, on loopback. Like agentgateway_port_t, its port type is bound to a
+number with portcon, which only the base policy accepts.
+
+network_port() declares tactiq_stop_port_t and generates
+corenet_tcp_bind_tactiq_stop_port() (used by tactiq_stop) and
+corenet_tcp_connect_tactiq_stop_port() (used by agentgateway).
+
+49318 is in the IANA dynamic range, next to agentgateway's 49317, and is
+not covered by any port or range declared in this file (checked against
+refpolicy main: nothing between virt_migration's 49152-49216 and 50000
+covers it).
+
+Placed directly after agentgateway; applies on top of 0001.
+
+Upstream-Status: Inappropriate [TactiQ OS specific service]
+
+Signed-off-by: TactiQ OS <andrey@tactiq.ai>
+---
+ policy/modules/kernel/corenetwork.te.in | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/policy/modules/kernel/corenetwork.te.in b/policy/modules/kernel/corenetwork.te.in
+--- a/policy/modules/kernel/corenetwork.te.in
++++ b/policy/modules/kernel/corenetwork.te.in
+@@ -93,6 +93,7 @@
+ network_port(afs_vl, udp,7003,s0)
+ network_port(afs3_callback, tcp,7001,s0, udp,7001,s0)
+ network_port(agentgateway, tcp,49317,s0)
++network_port(tactiq_stop, tcp,49318,s0)
+ network_port(agentx, udp,705,s0, tcp,705,s0)
+ network_port(amanda, udp,10080-10082,s0, tcp,10080-10083,s0)
+ network_port(amavisd_recv, tcp,10024,s0)
