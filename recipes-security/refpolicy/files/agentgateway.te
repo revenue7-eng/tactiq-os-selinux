@@ -1,4 +1,4 @@
-policy_module(agentgateway, 1.2.0)
+policy_module(agentgateway, 1.3.0)
 
 ########################################
 # Type declarations
@@ -45,6 +45,13 @@ allow agentgateway_t self:tcp_socket create_stream_socket_perms;
 corenet_tcp_bind_agentgateway_port(agentgateway_t)
 corenet_tcp_bind_generic_node(agentgateway_t)
 #
+# --- Management listeners: admin 15000, stats 15020, readiness 15021 ---
+# agentgateway opens all three whatever the config says (it only chooses
+# their addresses; TactiQ OS binds them to 127.0.0.1). Without a grant the
+# gateway cannot start in this domain. Their own port type, from patch 0005,
+# keeps this to the three numbers rather than unreserved_port_t.
+corenet_tcp_bind_agentgateway_mgmt_port(agentgateway_t)
+#
 # --- Network: ask tactiq-stop before every tool call (extAuthz) ---
 # The single outbound connection the gateway is allowed: to the stop
 # service's port type, 49318. SELinux binds name_connect to the port type,
@@ -62,6 +69,14 @@ tactiq_stop_tcp_connect(agentgateway_t)
 # added at that time, not pre-provisioned here.
 
 # --- Configuration (read-only) ---
+# The config lives in /etc/tactiq/agentgateway; /etc/tactiq itself is
+# tactiq_agent_conf_t. Without search on it the gateway cannot reach its own
+# directory (denied on the bench, 26.10.2026: the gateway had never been
+# started in this domain before).
+gen_require(`
+	type tactiq_agent_conf_t;
+')
+allow agentgateway_t tactiq_agent_conf_t:dir search;
 allow agentgateway_t agentgateway_conf_t:dir list_dir_perms;
 allow agentgateway_t agentgateway_conf_t:file read_file_perms;
 

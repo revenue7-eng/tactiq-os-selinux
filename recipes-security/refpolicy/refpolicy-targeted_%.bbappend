@@ -6,6 +6,7 @@ SRC_URI += " \
     file://0001-squashfs-genfscon-tactiq.patch \
     file://0001-corenetwork-declare-agentgateway-port.patch \
     file://0004-corenetwork-declare-tactiq-stop-port.patch \
+    file://0005-corenetwork-declare-agentgateway-mgmt-ports.patch \
     file://0003-udev-own-type-for-udev-tmpfs-files-backport.patch \
 \
     file://tactiq_fixes.te \
