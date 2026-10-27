@@ -1,0 +1,74 @@
+policy_module(tactiq_reftool, 1.0.0)
+
+########################################
+# A reference tool and a reference agent for the tool boundary in
+# tactiq_fixes (assertions 3 to 6), which is stated over attributes no other
+# module fills yet: without them it holds of nothing on the board.
+#
+#   tactiq_reftool_t   a tool: an MCP server on stdio, started by agentgateway
+#                      as a child process, as agentgateway-config requires of
+#                      every tool. No socket, no port.
+#   tactiq_refagent_t  an agent: tries to run the tool itself, then calls it
+#                      through agentgateway on 49317.
+#
+# Their binaries ship in the development image only (package tactiq-reftool,
+# installed by tactiq-image-dev.bb; scripts/check-release-no-dev.py refuses it
+# in a release manifest). The module is in every policy: a domain is entered
+# only from a file with its exec label, those files exist only in that
+# package, and a release root is read only under dm-verity, so in a release
+# both domains exist and cannot be entered. It is not behind the
+# tactiq-dev-policy override: no build sets that override any more (removed
+# after rc10), so a module behind it never reaches a policy.
+########################################
+
+gen_require(`
+	type agentgateway_t;
+	attribute tactiq_tool_domain;
+	attribute tactiq_tool_exec;
+	attribute tactiq_ai_agent_domain;
+')
+
+# --- The tool ---
+type tactiq_reftool_t;
+type tactiq_reftool_exec_t;
+domain_type(tactiq_reftool_t)
+domain_entry_file(tactiq_reftool_t, tactiq_reftool_exec_t)
+role system_r types tactiq_reftool_t;
+typeattribute tactiq_reftool_t tactiq_tool_domain;
+typeattribute tactiq_reftool_exec_t tactiq_tool_exec;
+
+# agentgateway starts it under NoNewPrivileges=yes (agentgateway.service), so
+# the domain change needs nnp_transition; without it the child would stay in
+# agentgateway_t. The pattern also lets the child use the gateway's pipes.
+nnp_domtrans_pattern(agentgateway_t, tactiq_reftool_exec_t, tactiq_reftool_t)
+corecmd_search_bin(agentgateway_t)
+allow agentgateway_t tactiq_reftool_t:process { sigkill signal };
+
+allow tactiq_reftool_t self:process { signal_perms getsched };
+allow tactiq_reftool_t self:fifo_file rw_fifo_file_perms;
+libs_use_ld_so(tactiq_reftool_t)
+libs_use_shared_libs(tactiq_reftool_t)
+miscfiles_read_localization(tactiq_reftool_t)
+# Inherited from the gateway: its stderr, the journal stream from systemd.
+init_use_fds(tactiq_reftool_t)
+init_rw_stream_sockets(tactiq_reftool_t)
+
+# --- The agent ---
+type tactiq_refagent_t;
+type tactiq_refagent_exec_t;
+init_daemon_domain(tactiq_refagent_t, tactiq_refagent_exec_t)
+typeattribute tactiq_refagent_t tactiq_ai_agent_domain;
+
+allow tactiq_refagent_t self:process { signal_perms getsched };
+allow tactiq_refagent_t self:tcp_socket create_stream_socket_perms;
+# The gateway's port, and no other port type (assertion 5).
+corenet_tcp_connect_agentgateway_port(tactiq_refagent_t)
+# It tries to run the tool. It needs to reach the file for the attempt to
+# be the policy's to refuse: search on the directory and getattr on the file,
+# no execute (assertion 3).
+corecmd_search_bin(tactiq_refagent_t)
+allow tactiq_refagent_t tactiq_reftool_exec_t:file getattr;
+libs_use_ld_so(tactiq_refagent_t)
+libs_use_shared_libs(tactiq_refagent_t)
+miscfiles_read_localization(tactiq_refagent_t)
+logging_send_syslog_msg(tactiq_refagent_t)
