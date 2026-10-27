@@ -1,0 +1,2 @@
+/opt/tactiq/bin/tactiq-reftool		--	gen_context(system_u:object_r:tactiq_reftool_exec_t,s0)
+/opt/tactiq/bin/tactiq-refagent		--	gen_context(system_u:object_r:tactiq_refagent_exec_t,s0)
