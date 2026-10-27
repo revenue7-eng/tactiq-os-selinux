@@ -1,4 +1,4 @@
-policy_module(tactiq_reftool, 1.0.0)
+policy_module(tactiq_reftool, 1.0.1)
 
 ########################################
 # A reference tool and a reference agent for the tool boundary in
@@ -60,6 +60,9 @@ init_daemon_domain(tactiq_refagent_t, tactiq_refagent_exec_t)
 typeattribute tactiq_refagent_t tactiq_ai_agent_domain;
 
 allow tactiq_refagent_t self:process { signal_perms getsched };
+# Its own pipe: the child that tries to run the tool reports execve's errno
+# over it. Without this the report was lost on the bench (27.10.2026).
+allow tactiq_refagent_t self:fifo_file rw_fifo_file_perms;
 allow tactiq_refagent_t self:tcp_socket create_stream_socket_perms;
 # The gateway's port, and no other port type (assertion 5).
 corenet_tcp_connect_agentgateway_port(tactiq_refagent_t)
