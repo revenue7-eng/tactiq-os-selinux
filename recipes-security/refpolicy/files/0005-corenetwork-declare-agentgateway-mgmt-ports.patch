@@ -1,0 +1,33 @@
+From: TactiQ OS <andrey@tactiq.ai>
+Date: Mon, 26 Oct 2026 00:00:00 +0000
+Subject: [PATCH] corenetwork: declare agentgateway_mgmt_port_t on TCP 15000, 15020-15021
+
+agentgateway always opens three management listeners besides its data
+listener: admin on 15000, stats on 15020 and readiness on 15021
+(agentgateway d204f9c, crates/agentgateway/src/config.rs). None of the
+three numbers is declared in this file, so they fall into
+unreserved_port_t, which agentgateway_t may not bind; in its own domain
+the gateway could not start. A port type of its own keeps the grant to
+these three numbers instead of every unreserved port. The TactiQ OS
+config binds all three to 127.0.0.1.
+
+Checked against refpolicy main: no port or range here covers 15000,
+15020 or 15021. Applies on top of 0001 and 0004.
+
+Upstream-Status: Inappropriate [TactiQ OS specific service]
+
+Signed-off-by: TactiQ OS <andrey@tactiq.ai>
+---
+ policy/modules/kernel/corenetwork.te.in | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/policy/modules/kernel/corenetwork.te.in b/policy/modules/kernel/corenetwork.te.in
+--- a/policy/modules/kernel/corenetwork.te.in
++++ b/policy/modules/kernel/corenetwork.te.in
+@@ -94,5 +94,6 @@
+ network_port(afs3_callback, tcp,7001,s0, udp,7001,s0)
+ network_port(agentgateway, tcp,49317,s0)
++network_port(agentgateway_mgmt, tcp,15000,s0, tcp,15020-15021,s0)
+ network_port(tactiq_stop, tcp,49318,s0)
+ network_port(agentx, udp,705,s0, tcp,705,s0)
+ network_port(amanda, udp,10080-10082,s0, tcp,10080-10083,s0)

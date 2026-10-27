@@ -1,4 +1,4 @@
-policy_module(agentgateway, 1.1.1)
+policy_module(agentgateway, 1.4.0)
 
 ########################################
 # Type declarations
@@ -45,6 +45,21 @@ allow agentgateway_t self:tcp_socket create_stream_socket_perms;
 corenet_tcp_bind_agentgateway_port(agentgateway_t)
 corenet_tcp_bind_generic_node(agentgateway_t)
 #
+# --- Management listeners: admin 15000, stats 15020, readiness 15021 ---
+# agentgateway opens all three whatever the config says (it only chooses
+# their addresses; TactiQ OS binds them to 127.0.0.1). Without a grant the
+# gateway cannot start in this domain. Their own port type, from patch 0005,
+# keeps this to the three numbers rather than unreserved_port_t.
+corenet_tcp_bind_agentgateway_mgmt_port(agentgateway_t)
+#
+# --- Network: ask tactiq-stop before every tool call (extAuthz) ---
+# The single outbound connection the gateway is allowed: to the stop
+# service's port type, 49318. SELinux binds name_connect to the port type,
+# not to an address; the unit's IPAddressAllow=localhost keeps it on
+# loopback. Without this rule the extAuthz call fails, and with
+# failureMode: deny every tool call is refused.
+tactiq_stop_tcp_connect(agentgateway_t)
+#
 # Deliberately ABSENT (egress denied by default-deny):
 #   corenet_tcp_connect_generic_port  -- no outbound connect
 #   sysnet_dns_name_resolve           -- no DNS
@@ -54,8 +69,34 @@ corenet_tcp_bind_generic_node(agentgateway_t)
 # added at that time, not pre-provisioned here.
 
 # --- Configuration (read-only) ---
+# The config lives in /etc/tactiq/agentgateway; /etc/tactiq itself is
+# tactiq_agent_conf_t. Without search on it the gateway cannot reach its own
+# directory (denied on the bench, 26.10.2026: the gateway had never been
+# started in this domain before).
+gen_require(`
+	type tactiq_agent_conf_t;
+')
+allow agentgateway_t tactiq_agent_conf_t:dir search;
 allow agentgateway_t agentgateway_conf_t:dir list_dir_perms;
 allow agentgateway_t agentgateway_conf_t:file read_file_perms;
+# With --file the gateway always puts an inotify watch on the directory of
+# its config (state_manager.rs, watch_config_file: the parent, not the file)
+# and exits if it cannot. Denied on the bench (26.10.2026, 15 restarts, every
+# one "Failed to watch config file: Permission denied"). The directory is on
+# the dm-verity root, so the watch never fires; it only lets the gateway start.
+allow agentgateway_t agentgateway_conf_t:dir watch;
+
+# --- Name resolution: refused, and not logged ---
+# At start the gateway's resolver reads /etc/hosts (net_conf_t) and looks
+# into /run/systemd/resolve for resolv.conf. Both are denied on the bench,
+# and the gateway starts without them: its targets are addresses. They stay
+# denied (no DNS, see the absent list above); dontaudit keeps them out of the
+# audit log, where a zero count of denials is how a clean boot is checked.
+gen_require(`
+	type net_conf_t, systemd_resolved_runtime_t;
+')
+dontaudit agentgateway_t net_conf_t:file read_file_perms;
+dontaudit agentgateway_t systemd_resolved_runtime_t:dir search_dir_perms;
 
 # --- Logs (append-only) ---
 # The rules below assume the directory exists. Under ProtectSystem=strict

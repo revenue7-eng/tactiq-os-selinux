@@ -1,0 +1,4 @@
+/opt/tactiq/bin/tactiq-stop		--	gen_context(system_u:object_r:tactiq_stop_exec_t,s0)
+
+# Created by systemd's RuntimeDirectory=tactiq-stop.
+/run/tactiq-stop(/.*)?			gen_context(system_u:object_r:tactiq_stop_runtime_t,s0)

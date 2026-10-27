@@ -1,10 +1,12 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-TACTIQ_MODULES = "tactiq_fixes tactiq_agent tactiq_tpm tactiq_verifier tactiq_tamper tactiq_vault tactiq_ctl tactiq_rauc agentgateway tactiq_edge_daemon tactiq_ima tactiq_log tactiq_netperm"
+TACTIQ_MODULES = "tactiq_fixes tactiq_agent tactiq_tpm tactiq_verifier tactiq_tamper tactiq_vault tactiq_ctl tactiq_rauc agentgateway tactiq_edge_daemon tactiq_ima tactiq_log tactiq_netperm tactiq_stop"
 
 SRC_URI += " \
     file://0001-squashfs-genfscon-tactiq.patch \
     file://0001-corenetwork-declare-agentgateway-port.patch \
+    file://0004-corenetwork-declare-tactiq-stop-port.patch \
+    file://0005-corenetwork-declare-agentgateway-mgmt-ports.patch \
     file://0003-udev-own-type-for-udev-tmpfs-files-backport.patch \
 \
     file://tactiq_fixes.te \
@@ -46,6 +48,9 @@ SRC_URI += " \
     file://tactiq_netperm.te \
     file://tactiq_netperm.fc \
     file://tactiq_netperm.if \
+    file://tactiq_stop.te \
+    file://tactiq_stop.fc \
+    file://tactiq_stop.if \
 "
 
 do_compile:prepend() {
