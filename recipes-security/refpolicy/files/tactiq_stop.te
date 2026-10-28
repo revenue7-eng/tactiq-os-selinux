@@ -1,4 +1,4 @@
-policy_module(tactiq_stop, 1.0.0)
+policy_module(tactiq_stop, 1.1.0)
 
 ########################################
 # tactiq-stop: the agent stop service
@@ -19,6 +19,16 @@ init_daemon_domain(tactiq_stop_t, tactiq_stop_exec_t)
 # commands keep their lock file here.
 type tactiq_stop_runtime_t;
 files_runtime_file(tactiq_stop_runtime_t)
+
+# The operator's release, /data/tactiq/stop/release and release.sig: what
+# lifts a stop. Written by the operator, read by the service, by no one else
+# among the TactiQ domains. Same class as tactiq_site_perm_t: measured by IMA
+# into PCR 11, never appraised, since the release carries its own signature
+# under the operator's key, which IMA does not know. Without a type of its own
+# it would be tactiq_vault_data_t, which IMA appraises, and the service could
+# not read it.
+type tactiq_stop_release_t;
+files_type(tactiq_stop_release_t)
 
 # tactiq_stop_port_t is declared by network_port() in corenetwork.te.in
 # (patch 0004 in this layer), for the same reason as agentgateway_port_t:
@@ -63,6 +73,14 @@ dontaudit tactiq_stop_t cert_t:dir search;
 # --- Runtime directory ---
 allow tactiq_stop_t tactiq_stop_runtime_t:dir manage_dir_perms;
 allow tactiq_stop_t tactiq_stop_runtime_t:file manage_file_perms;
+
+# --- The operator's release: read only ---
+gen_require(`
+	type tactiq_data_fs_t;
+')
+allow tactiq_stop_release_t tactiq_data_fs_t:filesystem associate;
+allow tactiq_stop_t tactiq_stop_release_t:dir list_dir_perms;
+allow tactiq_stop_t tactiq_stop_release_t:file read_file_perms;
 
 # --- Device identity: read only ---
 # keys/ holds the device id and the AK public area the agent provisioned.

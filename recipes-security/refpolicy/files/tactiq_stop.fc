@@ -2,3 +2,7 @@
 
 # Created by systemd's RuntimeDirectory=tactiq-stop.
 /run/tactiq-stop(/.*)?			gen_context(system_u:object_r:tactiq_stop_runtime_t,s0)
+
+# The operator's release and its signature. More specific than /data(/.*)? in
+# tactiq_vault.fc, so this entry wins the match.
+/data/tactiq/stop(/.*)?			gen_context(system_u:object_r:tactiq_stop_release_t,s0)
