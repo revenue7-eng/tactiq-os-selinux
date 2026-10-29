@@ -1,4 +1,4 @@
-policy_module(tactiq_fixes, 2.4.0)
+policy_module(tactiq_fixes, 2.5.0)
 
 ########################################
 # Fix: busybox klogd/syslogd need read+map on bin_t
@@ -243,3 +243,53 @@ neverallow tactiq_ai_agent_domain { port_type -agentgateway_port_t }:tcp_socket 
 # 6. An AI agent opens no datagram, raw, packet, SCTP or ICMP socket. A port
 #    type does not bound those, so they are closed by the socket class.
 neverallow tactiq_ai_agent_domain self:{ udp_socket rawip_socket packet_socket sctp_socket icmp_socket } create;
+
+########################################
+# An AI agent does not change what governs it
+#
+# An agent that can write its own configuration, the gateway's, the stop
+# service's, a unit file or the SELinux policy can widen its own boundary
+# without crossing any of the assertions above: the published attack on
+# coding agents (an instruction file that has the agent rewrite its own
+# settings) works exactly that way. Assertion 7 closes the files that
+# decide the boundary to any change from an AI agent's domain; 8 closes the
+# policy interface and the MAC capabilities. Reading is not restricted
+# here.
+#
+# On the board the reference agent runs with DynamicUser=yes and
+# ProtectSystem=strict (tactiq-refagent.service in TactiQ OS), so a write
+# from it fails on the read-only view systemd gives it or on file modes
+# before SELinux is asked. That is why this is an assertion and not a bench
+# attempt: an attempt would show the mount, not the policy. The assertion
+# is what holds for the writable stores (the stop release on /data) and for
+# an agent domain that a later unit runs as root or on a writable root.
+########################################
+gen_require(`
+    type agentgateway_conf_t;
+    type agentgateway_exec_t;
+    type tactiq_agent_conf_t;
+    type tactiq_agent_cert_t;
+    type tactiq_stop_exec_t;
+    type tactiq_stop_release_t;
+    type etc_t;
+    attribute systemdunit;
+    type selinux_config_t;
+    type policy_config_t;
+    type default_context_t;
+    type file_context_t;
+    type security_t;
+')
+
+# 7. An AI agent changes no file that decides its boundary: configuration
+#    (the gateway's, the attestation agent's and its certificates, /etc),
+#    the operator's stop release, every unit file (systemdunit, which holds
+#    tactiq_agent_unit_t too), the SELinux policy and its
+#    contexts, and the executables of the gateway, the stop service and
+#    every tool.
+neverallow tactiq_ai_agent_domain { agentgateway_conf_t tactiq_agent_conf_t tactiq_agent_cert_t etc_t tactiq_stop_release_t systemdunit selinux_config_t policy_config_t default_context_t file_context_t agentgateway_exec_t tactiq_stop_exec_t tactiq_tool_exec }:{ file lnk_file } { write append create rename unlink link setattr relabelfrom relabelto };
+neverallow tactiq_ai_agent_domain { agentgateway_conf_t tactiq_agent_conf_t tactiq_agent_cert_t etc_t tactiq_stop_release_t selinux_config_t policy_config_t default_context_t file_context_t }:dir { write add_name remove_name reparent rename create rmdir setattr relabelfrom relabelto };
+
+# 8. An AI agent loads no policy, switches no enforcing mode or boolean and
+#    holds no MAC capability.
+neverallow tactiq_ai_agent_domain security_t:security { load_policy setenforce setbool setsecparam setcheckreqprot };
+neverallow tactiq_ai_agent_domain self:capability2 { mac_admin mac_override };
