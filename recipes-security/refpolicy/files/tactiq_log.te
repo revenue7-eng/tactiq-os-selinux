@@ -1,4 +1,4 @@
-policy_module(tactiq_log, 1.0.0)
+policy_module(tactiq_log, 1.1.0)
 
 ########################################
 #
@@ -30,6 +30,7 @@ files_type(tactiq_pstore_log_t)
 #
 
 gen_require(`
+	type auditd_log_t;
 	type systemd_journal_t;
 	type tactiq_data_fs_t;
 	type tactiq_vault_data_t;
@@ -44,6 +45,7 @@ gen_require(`
 # these two the journal and the crash records cannot exist there at all.
 allow systemd_journal_t tactiq_data_fs_t:filesystem associate;
 allow tactiq_pstore_log_t tactiq_data_fs_t:filesystem associate;
+allow auditd_log_t tactiq_data_fs_t:filesystem associate;
 
 # --- Self ---
 allow tactiq_logsetup_t self:capability { chown dac_override fowner fsetid };
@@ -60,6 +62,11 @@ allow tactiq_logsetup_t tactiq_pstore_log_t:file manage_file_perms;
 # The journal directory is created and chmodded here, not written to:
 # journald owns its contents.
 allow tactiq_logsetup_t systemd_journal_t:dir { search getattr create setattr add_name };
+
+# The same for the audit log: created and chmodded, never read. auditd owns
+# its contents, and the setup domain has no business reading the record of
+# what it did.
+allow tactiq_logsetup_t auditd_log_t:dir { search getattr create setattr };
 
 # --- The mount point under /var/volatile ---
 # /var/volatile is a tmpfs mounted with rootcontext=var_t, and
@@ -95,7 +102,7 @@ logging_send_syslog_msg(tactiq_logsetup_t)
 
 ########################################
 #
-# var-log-journal.mount
+# var-log-journal.mount and var-volatile-log-audit.mount
 #
 # systemd binds /data/log/journal onto /var/log/journal. The mount point
 # is created under the volatile /var/log and carries var_log_t; the source
@@ -105,4 +112,5 @@ logging_send_syslog_msg(tactiq_logsetup_t)
 allow mount_t var_log_t:dir mounton;
 allow init_t var_log_t:dir mounton;
 allow mount_t systemd_journal_t:dir { getattr search };
+allow mount_t auditd_log_t:dir { getattr search };
 allow mount_t tactiq_data_fs_t:filesystem getattr;

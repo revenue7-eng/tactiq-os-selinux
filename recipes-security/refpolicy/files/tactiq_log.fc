@@ -13,6 +13,12 @@
 # Kernel crash records get their own type, not the journal's: they are
 # recovered from a hardware area rather than written by a logging daemon,
 # and a reader of one should not thereby read the other.
+# The audit log keeps the ordinary auditd type, for the same reason as the
+# journal: auditd writes the label it writes anywhere else. It reaches
+# /data/log/audit through a bind onto /var/log/audit
+# (var-volatile-log-audit.mount in tactiq-os).
+/data/log/audit(/.*)?		gen_context(system_u:object_r:auditd_log_t,mls_systemhigh)
+
 /data/log/pstore(/.*)?		gen_context(system_u:object_r:tactiq_pstore_log_t,s0)
 
 /usr/sbin/tactiq-log-setup	--	gen_context(system_u:object_r:tactiq_logsetup_exec_t,s0)
