@@ -1,4 +1,4 @@
-policy_module(tactiq_agent, 2.4.3)
+policy_module(tactiq_agent, 2.4.4)
 
 ########################################
 # Type declarations
@@ -175,17 +175,22 @@ kernel_read_system_state(tactiq_agent_t)
 dev_read_sysfs(tactiq_agent_t)
 
 # --- Data directory (/data/tactiq) ---
-# keys/ holds the device id and the attestation public key. They are
-# provisioned as one pair and the agent refuses to run on a partial state, so
-# both are written here in one operation and neither is regenerated alone.
+# /data/tactiq itself is tactiq_vault_data_t (the /data entry in
+# tactiq_vault.fc). The agent only passes through it to keys/, counter/ and
+# audit/, each of which has its own label below. It writes nothing in the
+# vault tree. Until 2.4.4 this rule also allowed creating, writing and
+# unlinking vault files and entries: that dated from before keys/ and
+# counter/ got tactiq_agent_state_t, and nothing in the agent uses it.
 gen_require(`
     type tactiq_vault_data_t;
 ')
-allow tactiq_agent_t tactiq_vault_data_t:dir { search read open getattr write add_name remove_name };
-allow tactiq_agent_t tactiq_vault_data_t:file { create read write open getattr setattr lock unlink };
+allow tactiq_agent_t tactiq_vault_data_t:dir { search getattr };
 
-# Device state and envelopes carry their own labels; the permission set is
-# the same as for the vault tree, the difference is what IMA does with them.
+# Device state and envelopes carry their own labels. keys/ holds the device
+# id and the attestation public key, provisioned as one pair: the agent
+# refuses to run on a partial state, so both are written in one operation
+# and neither is regenerated alone. What differs between the two types is
+# what IMA does with them (see the type declarations above).
 # Envelopes also need rename: the agent writes each file of an envelope as
 # <name>.part and renames it into place, so a reader never sees a partial one.
 allow tactiq_agent_t tactiq_agent_state_t:dir { search read open getattr write add_name remove_name };
