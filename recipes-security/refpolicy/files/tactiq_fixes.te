@@ -1,4 +1,4 @@
-policy_module(tactiq_fixes, 2.5.0)
+policy_module(tactiq_fixes, 2.6.0)
 
 ########################################
 # Fix: busybox klogd/syslogd need read+map on bin_t
@@ -293,3 +293,38 @@ neverallow tactiq_ai_agent_domain { agentgateway_conf_t tactiq_agent_conf_t tact
 #    holds no MAC capability.
 neverallow tactiq_ai_agent_domain security_t:security { load_policy setenforce setbool setsecparam setcheckreqprot };
 neverallow tactiq_ai_agent_domain self:capability2 { mac_admin mac_override };
+
+########################################
+# An AI agent does not stop what governs it
+#
+# Assertions 7 and 8 close the files and the policy interface. An agent
+# can also weaken its boundary without writing a file: signal or trace
+# the gateway or the stop service, or ask systemd to stop their units,
+# directly or over D-Bus. Assertion 9 closes the process interface to
+# every domain but the agent's own; 10 closes the paths to systemd and
+# to the system bus, and the capabilities that would let the agent
+# signal or trace across users.
+#
+# On the board these paths are also closed by DynamicUser=yes (a separate
+# UID, no CAP_KILL, no CAP_SYS_PTRACE). As with 7 and 8, the assertion is
+# what holds when a later unit runs an agent domain as root.
+########################################
+gen_require(`
+    attribute domain;
+    type init_t;
+    type system_dbusd_t;
+    class service { start stop status reload enable disable };
+    class system { start stop status reload enable disable halt reboot };
+    class dbus { send_msg acquire_svc };
+')
+
+# 9. An AI agent signals and traces no process outside its own domain.
+neverallow tactiq_ai_agent_domain { domain -tactiq_ai_agent_domain }:process { sigkill sigstop signal ptrace };
+
+# 10. An AI agent reaches neither systemd nor the system bus, operates on
+#     no unit, and holds no capability to signal or trace across users.
+neverallow tactiq_ai_agent_domain { init_t system_dbusd_t }:unix_stream_socket connectto;
+neverallow tactiq_ai_agent_domain systemdunit:service { start stop reload enable disable };
+neverallow tactiq_ai_agent_domain init_t:system { start stop reload enable disable halt reboot };
+neverallow tactiq_ai_agent_domain domain:dbus send_msg;
+neverallow tactiq_ai_agent_domain self:capability { kill sys_ptrace };
