@@ -1,0 +1,58 @@
+From: TactiQ OS <andrey@tactiq.ai>
+Date: Wed, 18 Nov 2026 00:00:00 +0000
+Subject: [PATCH] init: daemons never use ttys (drop the true branch of
+ init_daemons_use_tty)
+
+The tunable init_daemons_use_tty grants every domain with the daemon
+attribute read and write on all ttys, tty_device_t included, when it is
+switched on. It is off by default, but in the built policy it is a
+boolean (booleanif in the CIL), so a process allowed to set booleans can
+switch it on at run time. Every TactiQ AI agent domain is started by
+init_daemon_domain() and so carries the daemon attribute: with the
+boolean on, an agent could open /dev/ttyS*, /dev/ttyUSB* or
+/dev/ttyACM* and speak Modbus RTU to a PLC past agentgateway and
+tactiq-stop.
+
+tactiq_fixes 2.7.0 asserts that an AI agent opens no serial device
+(assertion 11). With this block in place that assertion fails the build
+on the true branch alone (dev-build-rc11, 18.11.2026, no other
+violation reported). This patch keeps the false branch, which is the
+default behaviour, unconditionally, and removes the true branch. The
+tunable declaration is left in place so nothing that names it breaks;
+switching it no longer changes the policy.
+
+Upstream-Status: Inappropriate [TactiQ OS specific hardening]
+
+Signed-off-by: TactiQ OS <andrey@tactiq.ai>
+---
+ policy/modules/system/init.te | 17 ++++++-----------
+ 1 file changed, 6 insertions(+), 11 deletions(-)
+
+diff --git a/policy/modules/system/init.te b/policy/modules/system/init.te
+index 8188f8a..427fcd3 100644
+--- a/policy/modules/system/init.te
++++ b/policy/modules/system/init.te
+@@ -1665,17 +1665,12 @@ ifdef(`init_systemd',`
+ 	')
+ ')
+ 
+-tunable_policy(`init_daemons_use_tty',`
+-	term_use_unallocated_ttys(daemon)
+-	term_use_generic_ptys(daemon)
+-	term_use_all_ttys(daemon)
+-	term_use_all_ptys(daemon)
+-',`
+-	term_dontaudit_use_unallocated_ttys(daemon)
+-	term_dontaudit_use_generic_ptys(daemon)
+-	term_dontaudit_use_all_ttys(daemon)
+-	term_dontaudit_use_all_ptys(daemon)
+- ')
++# TactiQ OS: the tunable's true branch is removed, its false branch is
++# kept unconditionally. See 0006-init-daemons-never-use-ttys.patch.
++term_dontaudit_use_unallocated_ttys(daemon)
++term_dontaudit_use_generic_ptys(daemon)
++term_dontaudit_use_all_ttys(daemon)
++term_dontaudit_use_all_ptys(daemon)
+ 
+ tunable_policy(`use_nfs_home_dirs',`
+ 	fs_dontaudit_rw_nfs_files(daemon)

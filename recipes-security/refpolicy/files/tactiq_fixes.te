@@ -1,4 +1,4 @@
-policy_module(tactiq_fixes, 2.6.0)
+policy_module(tactiq_fixes, 2.7.0)
 
 ########################################
 # Fix: busybox klogd/syslogd need read+map on bin_t
@@ -328,3 +328,28 @@ neverallow tactiq_ai_agent_domain systemdunit:service { start stop reload enable
 neverallow tactiq_ai_agent_domain init_t:system { start stop reload enable disable halt reboot };
 neverallow tactiq_ai_agent_domain domain:dbus send_msg;
 neverallow tactiq_ai_agent_domain self:capability { kill sys_ptrace };
+
+########################################
+# An AI agent reaches no field bus directly
+#
+# Assertions 5 and 6 close the network: an agent's only socket goes to the
+# gateway. A PLC can also be reached without a socket, over a serial line:
+# Modbus RTU on RS-485 through a UART or a USB adapter. An agent domain
+# that opens /dev/ttyS*, /dev/ttyUSB* or /dev/ttyACM* talks to the plant
+# past the gateway, past tactiq-stop and past every receipt. Assertion 11
+# closes the serial devices (the serial_device attribute: tty_device_t,
+# usbtty_device_t, virtio_device_t) and raw USB (/dev/bus/usb, which a
+# libusb driver for an adapter would open instead of a tty).
+#
+# Like the blocks above, this grants nothing and holds of every agent
+# module that joins tactiq_ai_agent_domain. It does not settle which
+# domain does reach the bus when a write tool exists: that is decided
+# with the tool.
+########################################
+gen_require(`
+    attribute serial_device;
+    type usb_device_t;
+')
+
+# 11. An AI agent opens no serial device and no raw USB device.
+neverallow tactiq_ai_agent_domain { serial_device usb_device_t }:chr_file { open read write append ioctl map };
