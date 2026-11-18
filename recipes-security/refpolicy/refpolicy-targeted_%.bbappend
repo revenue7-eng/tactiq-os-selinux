@@ -8,6 +8,7 @@ SRC_URI += " \
     file://0004-corenetwork-declare-tactiq-stop-port.patch \
     file://0005-corenetwork-declare-agentgateway-mgmt-ports.patch \
     file://0003-udev-own-type-for-udev-tmpfs-files-backport.patch \
+    file://0006-init-daemons-never-use-ttys.patch \
 \
     file://tactiq_fixes.te \
     file://tactiq_fixes.fc \
